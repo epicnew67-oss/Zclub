@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { setSellerActive, setSellerVerified, softDeleteSeller } from "@/lib/admin";
 
 type SellerAppResult = { ok: boolean; error?: string };
@@ -69,7 +70,30 @@ export async function approveSellerApplicationAction(
     _application_id: applicationId,
     _note: note,
   });
-  if (result.ok) revalidatePath("/admin/sellers");
+  if (result.ok) {
+    revalidatePath("/admin/sellers");
+    // Tell the seller: bell notification here + the "accepted" alert
+    // pops on their dashboard/account (driven by the application row).
+    try {
+      const admin = createAdminClient();
+      const { data: application } = await admin
+        .from("seller_applications")
+        .select("user_id")
+        .eq("id", applicationId)
+        .maybeSingle();
+      if (application?.user_id) {
+        await admin.from("notifications").insert({
+          user_id: application.user_id,
+          type: "system",
+          title: "You're a seller!",
+          body: "Your onboarding request was accepted. Create your first listing and submit it for review.",
+          link: "/seller",
+        });
+      }
+    } catch {
+      // best effort — the dashboard alert still fires from the row state
+    }
+  }
   return result;
 }
 

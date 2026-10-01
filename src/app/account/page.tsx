@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { AuthCard } from "@/components/auth/auth-card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SellerApprovedAlert } from "@/components/seller/seller-approved-alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,15 +42,30 @@ export default async function AccountPage() {
 
   const { supabase, user } = await requireUser("/account");
 
-  const [profileResult, rolesResult, balanceResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, avatar_url, is_banned, created_at")
-      .eq("id", user.id)
-      .single(),
-    supabase.from("user_roles").select("role").eq("user_id", user.id),
-    supabase.rpc("get_own_wallet_balance"),
-  ]);
+  const [profileResult, rolesResult, balanceResult, applicationResult] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("display_name, avatar_url, is_banned, created_at")
+        .eq("id", user.id)
+        .single(),
+      supabase.from("user_roles").select("role").eq("user_id", user.id),
+      supabase.rpc("get_own_wallet_balance"),
+      supabase
+        .from("seller_applications")
+        .select("id, status, reviewed_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+  const application = applicationResult.data;
+  const showSellerApprovedAlert =
+    application?.status === "approved" &&
+    application.reviewed_at &&
+    Date.now() - new Date(application.reviewed_at).getTime() <
+      30 * 24 * 60 * 60 * 1000;
 
   const email = user.email ?? "unknown";
   const displayName =
@@ -66,6 +82,9 @@ export default async function AccountPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10 md:px-6 md:py-16">
+      {showSellerApprovedAlert && application ? (
+        <SellerApprovedAlert applicationId={application.id} />
+      ) : null}
       <header className="mb-8">
         <h1 className="font-heading text-3xl font-semibold md:text-4xl">
           Your account

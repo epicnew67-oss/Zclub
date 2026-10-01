@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSellerStatus } from "@/lib/seller";
 import { listSellerListings } from "@/lib/listings";
+import { SellerApprovedAlert } from "@/components/seller/seller-approved-alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,12 +34,14 @@ export default async function SellerDashboardPage() {
   const { user } = await requireUser("/seller");
   const supabase = await createClient();
   const { data: hasSeller } = await supabase.rpc("user_has_role", { _role: "seller" });
-  const { data: hasPending } = await supabase
+  const { data: application } = await supabase
     .from("seller_applications")
-    .select("id")
+    .select("id, status, reviewed_at")
     .eq("user_id", user.id)
-    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
+  const hasPending = application?.status === "pending";
 
   if (!hasSeller && !hasPending) {
     return (
@@ -88,6 +91,12 @@ export default async function SellerDashboardPage() {
   return (
     <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
       <div aria-hidden className="pointer-events-none absolute -top-24 right-4 h-72 w-72 rounded-full bg-burgundy/15 blur-3xl" />
+      {application?.status === "approved" &&
+      application.reviewed_at &&
+      Date.now() - new Date(application.reviewed_at).getTime() <
+        30 * 24 * 60 * 60 * 1000 ? (
+        <SellerApprovedAlert applicationId={application.id} />
+      ) : null}
       <div>
         <Badge variant="gold-outline">Seller</Badge>
         <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground">

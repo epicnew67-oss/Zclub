@@ -7,7 +7,31 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: seller listing visibility fix (this phase)
+## Phase: seller-approved popup alert (this phase)
+
+User: "this message should pop when seller board request is accepted" +
+registry link (watermelon alert-13).
+
+### Done
+
+- `SellerApprovedAlert` (`src/components/seller/seller-approved-alert.tsx`):
+  the alert-13 pattern (icon + message + action button) rebuilt with the
+  project's Alert/lucide/brand tokens — gold-trimmed strip that pops
+  bottom-right (bottom-above-mobile-nav on phones) with a slide-in
+  animation, an **Open** action (→ new listing) and an X dismiss.
+  Rendered in SSR (instant) and hidden pre-paint for already-acknowledged
+  applications via a layout effect + per-application localStorage key —
+  no flash, shows once.
+- Pops on `/seller` and `/account` for up to 30 days after
+  `seller_applications.reviewed_at` when status = approved.
+- Approving an application now also inserts a bell notification for that
+  seller ("You're a seller!") — note the real approval RPC is unchanged;
+  the notification is best-effort in the admin action.
+- New `scripts/verify-seller-approved-alert.mjs` (5 checks): approved
+  applications pop on both pages; pending ones don't. All pass locally;
+  all 8 suites green.
+
+## Phase: seller listing visibility fix
 
 User: "i registered my self as seller and i dont see the listing in a
 customer account, fix it."
