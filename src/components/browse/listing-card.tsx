@@ -17,8 +17,7 @@ export function ListingCard({
       variant="gold"
       data-browse-card
       className={cn(
-        "group/card relative flex h-full flex-col overflow-hidden transition-all duration-300",
-        "hover:-translate-y-0.5 hover:border-gold/60 hover:shadow-gold",
+        "group/card relative flex h-full flex-col overflow-hidden",
         className
       )}
     >
@@ -35,7 +34,7 @@ export function ListingCard({
               alt=""
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover/card:scale-[1.03]"
+              className="h-full w-full object-cover"
             />
           ) : (
             // No photo available — show an abstract brand-gradient
