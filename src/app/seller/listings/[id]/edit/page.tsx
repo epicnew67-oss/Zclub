@@ -31,11 +31,15 @@ export default async function EditListingPage({
     );
   }
 
-  await requireUser(`/seller/listings/${id}/edit`);
+  const { user } = await requireUser(`/seller/listings/${id}/edit`);
   const supabase = await createClient();
+  // RLS exposes every seller profile (public browse), so owning must be
+  // pinned to the caller — without it maybeSingle() breaks once more
+  // than one seller exists.
   const { data: profileRow } = await supabase
     .from("seller_profiles")
     .select("id")
+    .eq("user_id", user.id)
     .maybeSingle();
   if (!profileRow) {
     return (

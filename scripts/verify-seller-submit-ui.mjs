@@ -112,6 +112,43 @@ check("no-photo draft card renders", html.includes(`Submit UI no photo ${stamp}`
 check("submit button present", html.includes("Submit for review"));
 check("no-photo draft shows the hint", html.includes("Add at least one photo first"));
 
+// Regression: seller_profiles RLS exposes ALL profiles (public browse),
+// so own-profile lookups must be pinned to the caller — otherwise the
+// edit/new/availability pages break as soon as a second seller exists.
+const otherEmail = `submit-ui-other-${stamp}@test.local`;
+const { data: otherCreated, error: otherCreateErr } = await admin.auth.admin.createUser({
+  email: otherEmail,
+  password: `Pw-${randomUUID()}`,
+  email_confirm: true,
+  user_metadata: { display_name: `submit-ui-other-display-${stamp}` },
+});
+if (otherCreateErr) throw otherCreateErr;
+await admin.from("user_roles").insert({ user_id: otherCreated.user.id, role: "seller" });
+const { error: otherProfileErr } = await admin
+  .from("seller_profiles")
+  .insert({
+    user_id: otherCreated.user.id,
+    slug: `submit-ui-other-${stamp}`,
+    display_name: `submit-ui-other-display-${stamp}`,
+  });
+if (otherProfileErr) throw otherProfileErr;
+
+const editRes = await fetch(`${origin}/seller/listings/${withPhoto.id}/edit`, {
+  headers: { cookie },
+});
+const editHtml = await editRes.text();
+check("edit page renders 200", editRes.status === 200, `status=${editRes.status}`);
+check(
+  "edit page not blocked by multi-seller data",
+  !editHtml.includes("Only approved sellers")
+);
+check("edit page shows the form", editHtml.includes("Edit listing"));
+check("edit page shows Submit for review", editHtml.includes("Submit for review"));
+check(
+  "edit page shows posting guidance",
+  editHtml.includes("How to post this listing")
+);
+
 // The disabled state must be on the no-photo card: the button sits
 // immediately before the hint text inside the same wrapper.
 const hintIdx = html.indexOf("Add at least one photo first");
@@ -126,7 +163,9 @@ check(
 await admin.from("listing_photos").delete().eq("listing_id", withPhoto.id);
 await admin.from("listings").delete().in("id", [withPhoto.id, noPhoto.id]);
 await admin.from("seller_profiles").delete().eq("id", seller.id);
+await admin.from("seller_profiles").delete().eq("user_id", otherCreated.user.id);
 await admin.auth.admin.deleteUser(userId);
+await admin.auth.admin.deleteUser(otherCreated.user.id);
 
 console.log(`\n${fails === 0 ? "ALL SELLER SUBMIT-UI CHECKS PASSED" : `${fails} CHECK(S) FAILED`}`);
 process.exit(fails === 0 ? 0 : 1);

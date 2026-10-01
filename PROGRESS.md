@@ -7,7 +7,31 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: "how do I post it?" — submit clarity (this phase)
+## Phase: seller pages multi-seller bug — the real "can't post" blocker (this phase)
+
+Root cause found: the `seller_profiles_select` RLS policy is `USING (true)`
+(public browse needs it), so own-profile lookups **without a `user_id`
+filter** + `maybeSingle()` break with "Only approved sellers can edit
+listings" as soon as a second seller exists — which is exactly what
+happened on production. The Edit / New listing / Availability pages were
+all missing the filter (the listings list and dashboard already had it,
+which is why the cupboard looked half-working: sellers could save drafts
+but never open Edit to add photos or submit).
+
+### Done
+
+- Pinned `.eq("user_id", user.id)` in:
+  `seller/listings/[id]/edit`, `seller/listings/new`,
+  `seller/availability`.
+- `verify-seller-submit-ui.mjs` now seeds a **second seller** before
+  hitting the edit page and asserts it renders (no "Only approved
+  sellers"), the form + Submit for review + the new "How to post this
+  listing" guidance — 11 checks, all passing locally.
+- Earlier in this phase: Submit for review saves unsaved edits/photos
+  first, and the form now carries the "How to post this listing"
+  callout (photo → submit → admin approve → live in Browse).
+
+## Phase: "how do I post it?" — submit clarity
 
 User: "i can save as draft but how do i post it?" + Browse shows no
 listings (their listings were still drafts, never submitted).

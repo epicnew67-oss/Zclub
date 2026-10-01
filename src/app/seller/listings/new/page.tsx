@@ -18,11 +18,13 @@ export default async function NewListingPage() {
     );
   }
 
-  await requireUser("/seller/listings/new");
+  const { user } = await requireUser("/seller/listings/new");
   const supabase = await createClient();
+  // RLS exposes every seller profile (public browse) — pin to the caller.
   const { data: profileRow } = await supabase
     .from("seller_profiles")
     .select("id")
+    .eq("user_id", user.id)
     .maybeSingle();
   if (!profileRow) {
     return (
