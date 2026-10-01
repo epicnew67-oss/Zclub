@@ -7,7 +7,38 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: in-app crypto checkout (this phase)
+## Phase: admin top-up queue + crypto auto-credit (this phase)
+
+User: "the top up queue should be there in admin panel … i dont have to
+receive reject or approve for crypto payments, it should be auto credited,
+however in the top-ups section i wanna have email id of the user who
+topped up and other info."
+
+### Done
+
+- **`/admin/topups` is now the real, actionable queue** (was a read-only
+  mirror with truncated user ids): finance/owner gate, reviewer cards with
+  buyer name + **email**, method, tokens, PKR price, reference /
+  transaction ID, sender number, screenshot, expiry, and approve/reject
+  through the existing idempotent ledger RPC; the `?id=` deep-link
+  highlight works here too.
+- **Crypto auto-credits**: pending crypto payments are excluded from the
+  review queue (they credit via IPN/server sync). They appear only when
+  flagged — underpaid / overpaid / refunded — preserving the existing
+  under/overpay handling. Crypto no longer fires a "New top-up request"
+  alert on creation; instead a **"Crypto payment needs review"** alert
+  fires (webhook + sync paths) only for flagged payments, linking to the
+  queue row.
+- **Emails**: `profiles` has no email column (auth.users is the source of
+  truth) — that's why the old queue showed nothing. New service-role RPC
+  `admin_user_emails(uuid[])` (migration `20261203000000`) maps buyer ids
+  → emails in one call; the queue merges it (profile display name still
+  comes from `profiles`).
+- `scripts/verify-crypto-flow.mjs` extended to **22 checks**: the queue
+  lists manual + flagged crypto rows (with buyer emails) and excludes
+  plain waiting crypto. All 8 suites green.
+
+## Phase: in-app crypto checkout
 
 User: build the full in-app crypto checkout — coin selection, exact
 amount/address/QR, real statuses, live updates; "Payment confirming" must

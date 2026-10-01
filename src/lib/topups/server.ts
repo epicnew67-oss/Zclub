@@ -6,7 +6,7 @@
 
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { alertNewTopup } from "@/lib/admin-alerts";
+import { alertCryptoFlagged, alertNewTopup } from "@/lib/admin-alerts";
 import {
   createNowPaymentsPayment,
   fetchNowPaymentsMinUsd,
@@ -234,16 +234,9 @@ export async function createCryptoTopup(args: {
     .single();
   if (topupError) throw topupError;
 
-  // Best-effort fan-out to admin/finance. Failures don't block the
-  // top-up — the row is already created; the bell + push just won't
-  // reach anyone who isn't subscribed yet.
-  void alertNewTopup({
-    topupId: topup.id,
-    amountPkr: pack.price_pkr,
-    tokens: pack.tokens,
-    method: "crypto",
-    buyerEmail: args.userEmail ?? "",
-  }).catch((err) => console.warn("[topup] admin alert failed", err));
+  // No admin alert here: crypto payments auto-credit on confirmation.
+  // Finance is pinged only if a payment ends up flagged (underpaid /
+  // overpaid / refunded) — see alertCryptoFlagged callers.
 
   return {
     topupId: topup.id,
@@ -253,6 +246,22 @@ export async function createCryptoTopup(args: {
     payExpiresAt: payment.payExpiresAt,
     priceUsd,
   };
+}
+
+/**
+ * True when a webhook-apply result represents a payment that needs a
+ * human (underpaid / overpaid / refunded) — the only crypto cases that
+ * belong in the review queue or deserve an alert.
+ */
+export function cryptoFlaggedReason(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as { overpaid?: boolean; reason?: string };
+  if (d.overpaid === true) return "Overpaid — difference flagged";
+  if (d.reason === "underpaid_flagged") return "Underpaid";
+  if (d.reason === "underpaid_expired_flagged")
+    return "Expired with a partial amount";
+  if (d.reason === "refunded_flagged") return "Refunded after payment";
+  return null;
 }
 
 /**
@@ -275,7 +284,7 @@ export async function syncCryptoPaymentForTopup(
 
   const { data: payment } = await admin
     .from("payments")
-    .select("id, external_id, pay_address")
+    .select("id, external_id, pay_address, tokens")
     .eq("id", topup.payment_id)
     .maybeSingle();
   // Legacy invoice rows have no address yet — the IPN webhook handles
@@ -285,13 +294,22 @@ export async function syncCryptoPaymentForTopup(
   const status = await fetchNowPaymentsPaymentStatus(payment.external_id);
   if (!status || !status.status) return null;
 
-  const { error } = await admin.rpc("nowpayments_webhook_apply", {
+  const { data: applyData, error } = await admin.rpc("nowpayments_webhook_apply", {
     _payment_id: payment.external_id,
     _ipn_status: status.status,
     _actually_paid: status.actuallyPaid,
     _actually_paid_fiat: status.actuallyPaidFiat,
   } as never);
   if (error) throw error;
+
+  const flagged = cryptoFlaggedReason(applyData);
+  if (flagged) {
+    void alertCryptoFlagged({
+      topupId,
+      reason: flagged,
+      tokens: payment.tokens,
+    });
+  }
 
   // Display metadata only (never money state).
   await admin
@@ -540,7 +558,7 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
     ...new Set(rows.map((r) => r.payment_id).filter((id): id is string => Boolean(id))),
   ];
 
-  type ProfileRow = { id: string; email: string | null; display_name: string | null };
+  type ProfileRow = { id: string; display_name: string | null };
   type PackRow = { id: string; price_pkr: number | null };
   type PaymentRow = {
     id: string;
@@ -551,10 +569,15 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
     pay_amount: number | null;
   };
 
-  const [profilesRes, packsRes, paymentsRes] = await Promise.all([
+  const [profilesRes, emailsRes, packsRes, paymentsRes] = await Promise.all([
     userIds.length
-      ? admin.from("profiles").select("id, email, display_name").in("id", userIds)
+      ? admin.from("profiles").select("id, display_name").in("id", userIds)
       : Promise.resolve({ data: [] as ProfileRow[] }),
+    // Emails live in auth.users (profiles has no email column) — one
+    // service-role call maps every buyer id in the queue.
+    userIds.length
+      ? admin.rpc("admin_user_emails", { _user_ids: userIds })
+      : Promise.resolve({ data: {} as Record<string, string> }),
     packIds.length
       ? admin.from("token_packs").select("id, price_pkr").in("id", packIds)
       : Promise.resolve({ data: [] as PackRow[] }),
@@ -567,6 +590,7 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
   ]);
 
   const profileById = new Map(((profilesRes.data ?? []) as ProfileRow[]).map((p) => [p.id, p]));
+  const emailById = (emailsRes.data ?? {}) as Record<string, string>;
   const packById = new Map(((packsRes.data ?? []) as PackRow[]).map((p) => [p.id, p]));
   const paymentById = new Map(((paymentsRes.data ?? []) as PaymentRow[]).map((p) => [p.id, p]));
 
@@ -575,6 +599,15 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
     const profile = profileById.get(row.user_id) ?? null;
     const pack = row.token_pack_id ? packById.get(row.token_pack_id) ?? null : null;
     const payment = row.payment_id ? paymentById.get(row.payment_id) ?? null : null;
+
+    // Crypto payments auto-credit on confirmation — they belong in the
+    // review queue only when flagged (underpaid / overpaid / refunded).
+    if (
+      row.method === "crypto" &&
+      !(payment?.needs_review === true || payment?.flag_reason)
+    ) {
+      continue;
+    }
 
     let screenshotUrl: string | null = null;
     if (row.screenshot_path) {
@@ -589,7 +622,7 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
       method: row.method,
       tokens: row.tokens,
       price_pkr: pack?.price_pkr ?? null,
-      buyer_email: profile?.email ?? null,
+      buyer_email: emailById[row.user_id] ?? null,
       buyer_name: profile?.display_name ?? null,
       reference_code: row.reference_code,
       transaction_id: row.transaction_id,

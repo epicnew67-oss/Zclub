@@ -56,6 +56,25 @@ export async function alertNewTopup(input: {
   );
 }
 
+/**
+ * Crypto payments auto-credit on confirmation, so they never generate a
+ * "new top-up request" ping. This alert fires only when a payment ends up
+ * flagged for a human (underpaid / overpaid / refunded). notify_role
+ * dedupes within 5 minutes for the same title+link.
+ */
+export async function alertCryptoFlagged(input: {
+  topupId: string;
+  reason: string;
+  tokens: number;
+}): Promise<void> {
+  await notifyRoles(
+    "system",
+    "Crypto payment needs review",
+    `${input.reason} — ${input.tokens.toLocaleString()} tokens`,
+    `/admin/topups?id=${input.topupId}`
+  ).catch(() => undefined);
+}
+
 export async function alertNewDispute(input: {
   bookingId: string;
   openedBy: string;

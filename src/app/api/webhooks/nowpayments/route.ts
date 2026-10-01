@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sortedStringify } from "@/lib/nowpayments";
+import { alertCryptoFlagged } from "@/lib/admin-alerts";
+import { cryptoFlaggedReason } from "@/lib/topups/server";
 
 export const runtime = "nodejs";
 
@@ -135,6 +137,35 @@ export async function POST(request: Request) {
       .eq("external_id", lookupId);
   } catch {
     // never fail the webhook for a cosmetic update
+  }
+
+  // Flagged crypto (underpaid / overpaid / refunded) → ping finance; the
+  // successful path auto-credits silently via the RPC above.
+  const flagged = cryptoFlaggedReason(data);
+  if (flagged) {
+    try {
+      const { data: payRow } = await admin
+        .from("payments")
+        .select("id, tokens")
+        .eq("external_id", lookupId)
+        .maybeSingle();
+      if (payRow) {
+        const { data: topupRow } = await admin
+          .from("topup_requests")
+          .select("id")
+          .eq("payment_id", payRow.id)
+          .maybeSingle();
+        if (topupRow) {
+          void alertCryptoFlagged({
+            topupId: topupRow.id,
+            reason: flagged,
+            tokens: payRow.tokens,
+          });
+        }
+      }
+    } catch {
+      // best effort — the queue still shows the flagged row
+    }
   }
 
   return Response.json(data);

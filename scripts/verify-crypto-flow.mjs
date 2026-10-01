@@ -80,7 +80,7 @@ async function makeBuyer(tag) {
     }),
     "utf8"
   ).toString("base64url")}`;
-  return { userId: data.user.id, cookie };
+  return { userId: data.user.id, cookie, email };
 }
 
 const { data: packs } = await admin
@@ -213,6 +213,129 @@ const legacyIpn = await postIpn({
   pay_currency: "trx",
 });
 check("C: legacy invoice IPN still credits", legacyIpn?.credited === true, JSON.stringify(legacyIpn));
+
+// ---------------------------------------------------------------- D
+// Admin top-up queue: manual payments + flagged crypto only; plain
+// waiting crypto auto-credits and must NOT be listed.
+const owner = await makeBuyer("crypto-owner");
+const { error: ownerRoleErr } = await admin
+  .from("user_roles")
+  .insert({ user_id: owner.userId, role: "owner" });
+if (ownerRoleErr) throw ownerRoleErr;
+
+const waitingBuyer = await makeBuyer("queue-waiting");
+const { data: queuePack } = await admin
+  .from("token_packs")
+  .select("id, price_pkr, tokens")
+  .eq("is_active", true)
+  .limit(1)
+  .single();
+
+// 1) waiting crypto — auto-credit, not in the queue
+const waitingPay = (
+  await admin
+    .from("payments")
+    .insert({
+      user_id: waitingBuyer.userId,
+      external_id: `np-queue-wait-${Date.now().toString(36)}`,
+      token_pack_id: queuePack.id,
+      status: "pending",
+      price_pkr: queuePack.price_pkr,
+      tokens: queuePack.tokens,
+      pay_currency: "ltc",
+      pay_amount: 0.2,
+      pay_address: "M8PSV1t2vVamz6nKFVG2YnNnuknkXBJJE8",
+      pay_status: "waiting",
+    })
+    .select("id")
+    .single()
+).data;
+const waitingTopup = (
+  await admin
+    .from("topup_requests")
+    .insert({
+      user_id: waitingBuyer.userId,
+      payment_id: waitingPay.id,
+      method: "crypto",
+      token_pack_id: queuePack.id,
+      tokens: queuePack.tokens,
+      status: "pending",
+    })
+    .select("id")
+    .single()
+).data;
+
+// 2) flagged crypto — underpaid, must be in the queue
+const flaggedBuyer = await makeBuyer("queue-flagged");
+const flaggedPay = (
+  await admin
+    .from("payments")
+    .insert({
+      user_id: flaggedBuyer.userId,
+      external_id: `np-queue-flag-${Date.now().toString(36)}`,
+      token_pack_id: queuePack.id,
+      status: "pending",
+      price_pkr: queuePack.price_pkr,
+      tokens: queuePack.tokens,
+      pay_currency: "ltc",
+      pay_amount: 0.2,
+      pay_address: "M8PSV1t2vVamz6nKFVG2YnNnuknkXBJJE8",
+      pay_status: "partially_paid",
+      needs_review: true,
+      flag_reason: "underpaid — manual review required",
+    })
+    .select("id")
+    .single()
+).data;
+const flaggedTopup = (
+  await admin
+    .from("topup_requests")
+    .insert({
+      user_id: flaggedBuyer.userId,
+      payment_id: flaggedPay.id,
+      method: "crypto",
+      token_pack_id: queuePack.id,
+      tokens: queuePack.tokens,
+      status: "pending",
+    })
+    .select("id")
+    .single()
+).data;
+
+// 3) manual pending — must be in the queue with the buyer email
+const manualBuyerEmail = `queue-manual-${Date.now().toString(36)}@test.local`;
+const { data: manualUser, error: manualUserErr } = await admin.auth.admin.createUser({
+  email: manualBuyerEmail,
+  password: `Pw-${randomUUID()}`,
+  email_confirm: true,
+  user_metadata: { display_name: "Queue Manual" },
+});
+if (manualUserErr) throw manualUserErr;
+const manualTopupRef = `SC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+const { data: manualTopup, error: manualTopupErr } = await admin
+  .from("topup_requests")
+  .insert({
+    user_id: manualUser.user.id,
+    method: "jazzcash",
+    token_pack_id: queuePack.id,
+    tokens: queuePack.tokens,
+    status: "pending",
+    reference_code: manualTopupRef,
+    expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+  })
+  .select("id")
+  .single();
+if (manualTopupErr) throw manualTopupErr;
+
+const queueRes = await fetch(`${origin}/admin/topups`, { headers: { cookie: owner.cookie } });
+const queueHtml = await queueRes.text();
+check("D: /admin/topups renders 200", queueRes.status === 200, `status=${queueRes.status}`);
+check("D: queue heading present", queueHtml.includes("Top-up") && queueHtml.includes("queue"));
+check("D: manual row listed", queueHtml.includes(`topup-${manualTopup.id}`));
+check("D: flagged crypto listed", queueHtml.includes(`topup-${flaggedTopup.id}`));
+check("D: waiting crypto NOT listed", !queueHtml.includes(`topup-${waitingTopup.id}`));
+check("D: manual buyer email shown", queueHtml.includes(manualBuyerEmail));
+check("D: flagged buyer email shown", queueHtml.includes(flaggedBuyer.email ?? "___"));
 
 console.log(`\n${fails === 0 ? "ALL CRYPTO FLOW CHECKS PASSED" : `${fails} CHECK(S) FAILED`}`);
 process.exit(fails === 0 ? 0 : 1);
