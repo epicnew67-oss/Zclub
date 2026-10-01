@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOutIcon, Loader2Icon, WalletIcon } from "lucide-react";
+import {
+  LogOutIcon,
+  Loader2Icon,
+  WalletIcon,
+  StoreIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { brand } from "@/lib/brand";
 import { Logo } from "@/components/brand/Logo";
 import { BalanceChip } from "@/components/wallet/balance-chip";
@@ -27,18 +33,22 @@ export type NavbarUser = {
   displayName: string;
 } | null;
 
+const STAFF_ROLES = ["support", "finance", "owner"] as const;
+
 export function Navbar({
   user,
   balance,
   walletId,
   notifications,
   unread,
+  roles = [],
 }: {
   user: NavbarUser;
   balance: number | null;
   walletId: string | null;
   notifications: NotificationRow[];
   unread: number;
+  roles?: string[];
 }) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -53,6 +63,13 @@ export function Navbar({
   }
 
   const initialBalance = typeof balance === "number" ? balance : 0;
+  const isSeller = roles.includes("seller");
+  const isStaff = roles.some((role) =>
+    (STAFF_ROLES as readonly string[]).includes(role)
+  );
+  // "Become a seller" is a recruiting CTA — only for signed-in users who
+  // are neither sellers already nor running the platform.
+  const showBecomeSeller = Boolean(user) && !isSeller && !isStaff;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
@@ -70,9 +87,23 @@ export function Navbar({
               Wallet
             </Link>
           ) : null}
-          {user ? (
+          {isSeller ? (
+            <Link href="/seller" className="transition-colors hover:text-gold">
+              Seller studio
+            </Link>
+          ) : null}
+          {showBecomeSeller ? (
             <Link href="/become-a-seller" className="transition-colors hover:text-gold">
               Become a seller
+            </Link>
+          ) : null}
+          {isStaff ? (
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 text-gold transition-colors hover:text-gold-soft"
+            >
+              <ShieldCheckIcon className="size-4" />
+              Admin panel
             </Link>
           ) : null}
         </nav>
@@ -116,6 +147,25 @@ export function Navbar({
                       <WalletIcon data-icon="inline-start" /> Wallet
                     </Link>
                   </DropdownMenuItem>
+                  {isSeller ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/seller">
+                        <StoreIcon data-icon="inline-start" /> Seller studio
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {showBecomeSeller ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/become-a-seller">Become a seller</Link>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {isStaff ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <ShieldCheckIcon data-icon="inline-start" /> Admin panel
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     disabled={signingOut}

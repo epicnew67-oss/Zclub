@@ -33,19 +33,20 @@ async function getNavbarSession(): Promise<{
   walletId: string | null;
   notifications: NotificationRow[];
   unread: number;
+  roles: string[];
 }> {
   if (!isSupabaseConfigured()) {
-    return { user: null, balance: null, walletId: null, notifications: [], unread: 0 };
+    return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [] };
   }
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { user: null, balance: null, walletId: null, notifications: [], unread: 0 };
+    if (!user) return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [] };
 
     const email = user.email ?? "unknown";
-    const [profileResult, balanceResult, walletResult, rowsResult, unreadResult] = await Promise.all([
+    const [profileResult, balanceResult, walletResult, rowsResult, unreadResult, rolesResult] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name")
@@ -64,6 +65,7 @@ async function getNavbarSession(): Promise<{
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .is("read_at", null),
+      supabase.from("user_roles").select("role").eq("user_id", user.id),
     ]);
 
     return {
@@ -75,9 +77,10 @@ async function getNavbarSession(): Promise<{
       walletId: walletResult.data?.id ?? null,
       notifications: (rowsResult.data ?? []) as NotificationRow[],
       unread: unreadResult.count ?? 0,
+      roles: ((rolesResult.data ?? []) as Array<{ role: string }>).map((row) => row.role),
     };
   } catch {
-    return { user: null, balance: null, walletId: null, notifications: [], unread: 0 };
+    return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [] };
   }
 }
 
@@ -113,7 +116,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const { user, balance, walletId, notifications, unread } = await getNavbarSession();
+  const { user, balance, walletId, notifications, unread, roles } = await getNavbarSession();
 
   return (
     <html
@@ -135,6 +138,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               walletId={walletId}
               notifications={notifications}
               unread={unread}
+              roles={roles}
             />
           ) : (
             <FloatingNavbar />

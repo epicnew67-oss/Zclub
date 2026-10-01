@@ -7,6 +7,29 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: role-aware navbar (this phase)
+
+User: "why does it show become a seller and wallet for admin, i have logged
+in, i dont see any admin related things" → fixed.
+
+### Done
+
+- `navbar.tsx` now takes `roles: string[]` (server-fetched, defaults `[]`):
+  sellers get a **Seller studio** link (`/seller`), staff
+  (`support`/`finance`/`owner`) get an **Admin panel** link (`/admin`);
+  the "Become a seller" recruiting link now only renders for signed-in
+  buyers who are neither sellers nor staff (desktop nav + dropdown).
+  Wallet stays visible for everyone (buyers pay, sellers earn — correct).
+- `layout.tsx` `getNavbarSession()` fetches `user_roles` and passes
+  `roles` to the authenticated `<Navbar />`; guests unchanged.
+- New test `scripts/verify-role-navbar.mjs` (13 checks):
+  `node scripts/verify-role-navbar.mjs local` creates owner/seller/buyer
+  fixtures and asserts rendered SSR HTML; `... live` checks the production
+  admin account against the deployed site. Note: the first draft signed in
+  with the service-role client, so later role inserts silently ran as the
+  previous user (RLS-denied) — fixture sign-ins now use a separate anon
+  client.
+
 ## Phase: production deployment — Supabase Cloud + Vercel (this phase)
 
 User: "i have to deploy it too vercel too and i have to setup supabase
