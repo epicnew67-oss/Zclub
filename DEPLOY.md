@@ -5,6 +5,48 @@ it provisions the cloud services the app already expects.
 
 ---
 
+## Live deployment (current)
+
+| Thing | Value |
+| --- | --- |
+| Repository | https://github.com/epicnew67-oss/Zclub (`main`) |
+| Production URL | **https://zclub-lime.vercel.app** |
+| Vercel project | `zclub` (team `sc-lub`, owner epicnew67-oss) |
+| Supabase cloud project | `sclub` — ref `vkdkvicgiopfmugsjijw` (Seoul) |
+| Supabase URL | `https://vkdkvicgiopfmugsjijw.supabase.co` |
+| Local env for Vercel values | `.env.production.local` (gitignored) |
+| Migrations on cloud | 15/15 applied (`npx supabase db push`) |
+
+> **Gotcha that cost us an hour:** if the Vercel project is created
+> manually (`vercel project add`) its **framework preset is empty**, so
+> Vercel runs `npm run build` but deploys the **source tree** as static
+> files — static assets return 200 while every app route 404s with
+> `X-Vercel-Error: NOT_FOUND`. Fix: set the preset to Next.js:
+> ```bash
+> # dashboard: Project → Settings → Build & Development → Framework Preset → Next.js
+> # or via API:
+> curl -X PATCH -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \
+>   -d '{"framework":"nextjs"}' \
+>   "https://api.vercel.com/v9/projects/zclub?teamId=team_3jgfyQy30QfRu5GCa8G45sSC"
+> ```
+> then redeploy. (A plain `vercel --prod` on a fresh directory detects
+> the framework automatically — this only bites when the project was
+> pre-created.)
+
+### One dashboard step still required (Auth links)
+Supabase → **Authentication → URL Configuration**:
+- **Site URL**: `https://zclub-lime.vercel.app`
+- **Redirect URLs** (add all four):
+  - `https://zclub-lime.vercel.app/auth/check-email`
+  - `https://zclub-lime.vercel.app/auth/reset-password`
+  - `http://localhost:3000/auth/check-email`
+  - `http://localhost:3000/auth/reset-password`
+
+Without this, email confirmation and password-reset links land on the
+wrong page.
+
+---
+
 ## 1. Supabase Cloud (database, auth, storage, realtime)
 
 ### 1.1 Create the project

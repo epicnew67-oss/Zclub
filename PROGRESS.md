@@ -7,7 +7,70 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: functionality audit, CSP/auth fixes, deploy prep + push (this phase)
+## Phase: production deployment — Supabase Cloud + Vercel (this phase)
+
+User: "i have to deploy it too vercel too and i have to setup supabase
+cloud too" → shipped.
+
+### Done
+
+- **Supabase Cloud** — project **`sclub`** (`vkdkvicgiopfmugsjijw`,
+  Northeast Asia / Seoul), owned by epicnew67@gmail.com.
+  - CLI login friction resolved: the machine was logged into the
+    Supabase CLI as a different account (`Nivedh@Nivedh`) which could
+    not see the project (the ref the user quoted,
+    `uuevevjvrrgxusfbumdc`, is not visible to any accessible account —
+    the correct ref is `vkdkvicgiopfmugsjijw`). Logged in as
+    epicnew67@gmail.com via the device flow (Chrome; note the machine's
+    default browser is Brave, so the printed link was opened in Chrome
+    manually).
+  - `npx supabase link` + `npx supabase db push` → **15/15 migrations
+    applied**. Verified on the cloud: 5 token packs (250–5000 PKR),
+    3 storage buckets (`topup-screenshots`, `seller-avatars`,
+    `listing-photos`), RLS + RPCs + seeds all present.
+  - API keys fetched and written to `.env.production.local`
+    (gitignored) along with LiveKit + NOWPayments values.
+- **Vercel** — project `zclub` (team `sc-lub`, owner epicnew67-oss).
+  - 11 production env vars set (Supabase URL/anon/service, LiveKit ×3,
+    NOWPayments ×3, `NEXT_PUBLIC_SITE_URL`, VAPID subject).
+  - Deployment Protection ("Vercel Authentication") was on by default —
+    disabled via the API so the public can reach the site.
+  - **Framework-preset bug (the big one):** the project was created via
+    `vercel project add`, which leaves `framework` empty. Vercel then
+    ran `npm run build` but deployed the **source tree as static files** —
+    `/brand/icon.svg`, `/sw.js`, `/manifest.webmanifest` returned 200
+    while every app route (`/`, `/auth/sign-in`, …) returned the platform
+    `404 NOT_FOUND` globally (confirmed from two edges + an external
+    fetcher). Fixed with
+    `PATCH /v9/projects/zclub {"framework":"nextjs"}` + redeploy.
+    Documented in DEPLOY.md so it never bites again.
+- **Live at https://zclub-lime.vercel.app.**
+
+### Verified on production
+
+- `/` → 200 with real content (StripClub, "Join now" CTA, real stats,
+  no NaN, no `width="auto"`, no bottom nav for guests, no /design link).
+- `/auth/sign-in` → 200; `/account` → 307 to sign-in for guests.
+- Production CSP: allows exactly `https://vkdkvicgiopfmugsjijw.supabase.co`
+  (+ `wss://`) — no dev localhost allowances, no `unsafe-eval`.
+- Cloud auth endpoint reachable with
+  `Access-Control-Allow-Origin: https://zclub-lime.vercel.app`.
+- Repo pushed to **https://github.com/epicnew67-oss/Zclub** (`main`),
+  commits authored/committed by epicnew67-oss only.
+
+### Remaining (user dashboard steps)
+
+- **Supabase → Authentication → URL Configuration**: Site URL =
+  `https://zclub-lime.vercel.app`; redirect URLs for
+  `/auth/check-email` + `/auth/reset-password` (both production and
+  `http://localhost:3000`). Required for email confirmation + reset
+  links.
+- Custom SMTP (the built-in sender is rate-limited) and an optional
+  custom domain (then update `NEXT_PUBLIC_SITE_URL` + Auth URLs).
+- Rotate the LiveKit API secret that was pasted into chat in an earlier
+  phase (noted since then).
+
+## Phase: functionality audit, CSP/auth fixes, deploy prep + push (prior phase)
 
 User: "Stop focusing only on visual redesign. I need STRIPCLUB to be a
 fully working application now." (Repo first pushed to `S-Club`, then
