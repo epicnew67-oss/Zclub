@@ -15,7 +15,7 @@
 export const brand = {
   name: "StripClub",
   shortName: "SC",
-  domain: "stripclubonline.com",
+  domain: "stripclubonline.store",
   tagline: "Exclusive 1:1 video moments, booked in tokens.",
   description:
     "StripClub is a marketplace where sellers list fixed-price 1:1 video call slots and buyers purchase them with site tokens.",

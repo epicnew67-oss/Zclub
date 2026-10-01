@@ -187,7 +187,7 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
               <div className="break-all font-mono text-foreground">{payment.pay_address}</div>
               {payment.pay_amount ? (
                 <div className="text-xs text-muted-foreground">
-                  Amount: {Number(payment.pay_amount).toString()} {payment.pay_currency ?? "usdt"} · PKR {payment.price_pkr.toLocaleString("en-US")}
+                  Amount: {Number(payment.pay_amount).toString()} {payment.pay_currency ?? "crypto"} · PKR {payment.price_pkr.toLocaleString("en-US")}
                 </div>
               ) : null}
             </div>

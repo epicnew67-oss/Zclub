@@ -7,7 +7,29 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: version-skew fix + friendly errors + finance deep link (this phase)
+## Phase: crypto ticker + domain fixes (this phase)
+
+User: "Pay currency USDT is not allowed when im topping up with crypto and
+fix this © 2026 StripClub · stripclubonline.com …"
+
+### Done
+
+- **Crypto top-ups:** `lib/nowpayments.ts` sent `pay_currency: "usdt"` —
+  NOWPayments rejects it with 400 "Pay currency USDT is not allowed"
+  (tickers are network-specific). Verified against the live account:
+  `usdttrc20` **is** enabled (a $2 test only tripped their ~$2.01 network
+  minimum). The client now sends `usdttrc20`, overridable via
+  `NOWPAYMENTS_PAY_CURRENCY`; the stored `payments.pay_currency` and the
+  status page's fallback label follow it.
+- `settings.payment_rates.crypto_min_usd` 1.5 → **3.0** (live DB, still
+  admin-editable) so packs below the network minimum get the friendly
+  "pay with JazzCash / Easypaisa" message instead of the raw NOWPayments
+  amount-minimum error.
+- **Domain:** `brand.domain` was `stripclubonline.com` → now
+  `stripclubonline.store` (fixes the footer line and the VAPID mailto
+  fallback; the deployed custom domain is the .store).
+
+## Phase: version-skew fix + friendly errors + finance deep link
 
 User reported "This page couldn't load — a server error occurred" when clicking
 a top-up notification (`/finance/topups?id=…`) while they and their client were

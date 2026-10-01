@@ -73,7 +73,11 @@ export async function createNowPaymentsInvoice(args: {
     body: JSON.stringify({
       price_amount: Number(args.priceUsd.toFixed(2)),
       price_currency: "usd",
-      pay_currency: "usdt",
+      // NOWPayments rejects bare "usdt" ("Pay currency USDT is not
+      // allowed") — tickers are network-specific. usdttrc20 is enabled
+      // on the production account; override with NOWPAYMENTS_PAY_CURRENCY
+      // (e.g. usdterc20 / btcbsc) if the store's coins change.
+      pay_currency: process.env.NOWPAYMENTS_PAY_CURRENCY ?? "usdttrc20",
       order_id: args.orderId,
       order_description: args.description,
       ...(args.ipnCallbackUrl

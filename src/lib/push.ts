@@ -17,6 +17,7 @@
  */
 
 import "server-only";
+import { brand } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -50,7 +51,7 @@ async function getWebpush() {
   if (!pub || !priv) return null;
   const mod = await import("web-push");
   mod.setVapidDetails(
-    process.env.VAPID_SUBJECT ?? `mailto:no-reply@${"stripclubonline.com"}`,
+    process.env.VAPID_SUBJECT ?? `mailto:no-reply@${brand.domain}`,
     pub,
     priv
   );

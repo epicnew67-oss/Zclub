@@ -169,7 +169,7 @@ export async function createCryptoTopup(args: {
       status: "pending",
       price_pkr: pack.price_pkr,
       tokens: pack.tokens,
-      pay_currency: invoice.pay_currency ?? "usdt",
+      pay_currency: invoice.pay_currency ?? "usdttrc20",
       pay_amount: invoice.pay_amount ?? priceUsd,
       price_usd: priceUsd,
       rate_lock: {
