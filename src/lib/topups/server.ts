@@ -76,9 +76,15 @@ export async function getPaymentRates(): Promise<PaymentRates> {
     .eq("key", "payment_rates")
     .maybeSingle();
   const value = (data?.value ?? {}) as Partial<PaymentRates>;
+  const usdPerPkr = Number(value.usd_per_pkr);
+  const cryptoMinUsd = Number(value.crypto_min_usd);
   return {
-    usd_per_pkr: Number(value.usd_per_pkr) || 0.0036,
-    crypto_min_usd: Number(value.crypto_min_usd) || 1.5,
+    usd_per_pkr: Number.isFinite(usdPerPkr) && usdPerPkr > 0 ? usdPerPkr : 0.0036,
+    // 0 is meaningful: crypto open to every pack. (`|| 1.5` used to
+    // coerce a configured 0 back to the old default — that's why the
+    // smallest pack kept seeing "~$1.50".)
+    crypto_min_usd:
+      Number.isFinite(cryptoMinUsd) && cryptoMinUsd >= 0 ? cryptoMinUsd : 0,
   };
 }
 
@@ -148,8 +154,8 @@ export async function createCryptoTopup(args: {
 
   // The hosted checkout lets the buyer pick ANY enabled coin and enforces
   // each coin's own network minimum; this guard just steers tiny packs to
-  // the manual methods up front.
-  if (priceUsd < rates.crypto_min_usd) {
+  // the manual methods up front. 0 disables it entirely.
+  if (rates.crypto_min_usd > 0 && priceUsd < rates.crypto_min_usd) {
     throw new Error(
       `Crypto top-ups start at ~$${rates.crypto_min_usd.toFixed(2)}. This pack is $${priceUsd.toFixed(2)} — please pay with JazzCash or Easypaisa instead.`
     );

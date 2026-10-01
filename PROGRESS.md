@@ -17,10 +17,16 @@ locked only for 10,000 tokens."
   invoice-level minimum; per-coin minimums are enforced by the hosted
   checkout. The only lock was our own pre-check guard
   (`settings.payment_rates.crypto_min_usd`, was 3).
-- Set `crypto_min_usd = 0` on cloud **and** local (admin-editable in
-  Settings) — crypto is now offered for all five packs. No code change or
-  deploy needed; the guard stays as an optional knob (raise it to steer
-  small packs to JazzCash/Easypaisa again).
+- **Follow-up bug:** setting the guard to 0 still showed "Crypto top-ups
+  start at ~$1.50" — `getPaymentRates()` parsed it as
+  `Number(value.crypto_min_usd) || 1.5`, and JS `0 || 1.5` coerces a
+  configured 0 back to the default. Fixed with explicit
+  `Number.isFinite && >= 0` parsing (missing value → 0), and the guard now
+  skips entirely when `crypto_min_usd <= 0`.
+- `crypto_min_usd = 0` on cloud **and** local (admin-editable in
+  Settings) — crypto is now offered for all five packs, including the
+  $0.91 one. The guard stays as an optional knob to steer small packs to
+  JazzCash/Easypaisa again.
 
 ## Phase: crypto invoices (any coin) + top-up status fix
 
