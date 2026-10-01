@@ -24,6 +24,7 @@ import {
   updateCategoryNameAction,
   updatePaymentDetailsAction,
 } from "@/app/admin/settings/actions";
+import { PaymentQrUploader } from "@/components/admin/payment-qr-uploader";
 
 type Tab = "general" | "categories" | "banners" | "announcements" | "token_packs" | "payment" | "money";
 
@@ -691,12 +692,30 @@ function PaymentDetailsForm({
         disabled={disabled}
         className="w-full rounded border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
       />
-      <input
-        placeholder="QR data URL (image/png;base64,…)"
+      <PaymentQrUploader
+        provider={provider}
         value={qrDataUrl}
-        onChange={(e) => setQrDataUrl(e.target.value)}
         disabled={disabled}
-        className="h-9 w-full rounded border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+        onCommit={async (url) => {
+          const result = await updatePaymentDetailsAction({
+            provider,
+            account_name: accountName,
+            account_number: accountNumber,
+            instructions,
+            qr_data_url: url ?? "",
+          });
+          if (result.ok) {
+            setQrDataUrl(url ?? "");
+            return { ok: true as const };
+          }
+          return {
+            ok: false as const,
+            error:
+              result.code === "forbidden"
+                ? "You don't have permission to change payment details."
+                : "Could not save the QR code — try again.",
+          };
+        }}
       />
       <button
         type="submit"

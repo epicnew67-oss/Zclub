@@ -7,7 +7,41 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: crypto priced in USD at checkout (this phase)
+## Phase: payment QR image upload (this phase)
+
+User: replace the JazzCash/Easypaisa "QR data URL" text inputs with a real
+image upload (click → pick PNG/JPG/WebP → stored in Supabase Storage).
+
+### Done
+
+- `Admin → Settings → Payment` now uses `PaymentQrUploader`
+  (`src/components/admin/payment-qr-uploader.tsx`): click-to-select,
+  preview, **Replace** and **Remove**, busy states, inline guidance and
+  clear toast errors. Validation: PNG/JPG/WebP only, ≤ 5 MB, empty files
+  rejected — client-side AND enforced by the bucket itself
+  (`allowed_mime_types` + `file_size_limit`), so the limits hold even if
+  the client is bypassed.
+- **No base64/data URLs**: the old text input is gone. The file uploads
+  directly to the new **public `payment-qr` bucket** (migration
+  `20261204000000`) via the signed-in admin session; bucket policies allow
+  public read (customers scan it) and owner/finance write/update/delete.
+  The resulting **public URL** is stored in the existing `qr_data_url`
+  settings field through the existing `admin_payment_details_update` RPC
+  (schema, audit trail and owner gate unchanged). Commit happens on
+  upload, so the customer screen updates immediately; a failed commit
+  cleans up the orphaned file, and Replace/Remove delete the old object
+  best-effort.
+- JazzCash and Easypaisa each have their own uploader + path prefix.
+- The customer manual-payment screen already renders `qr_data_url` as an
+  `<img>` — it now shows the uploaded QR automatically (data-URL legacy
+  values still render, so nothing breaks).
+- New `scripts/verify-payment-qr.mjs` (14 checks): buyer uploads are
+  denied, owner uploads succeed and serve publicly, bad type + oversize
+  are rejected by the bucket, the RPC stores the URL, the customer page
+  embeds it, and the settings bundle ships the uploader with no base64
+  input left. All pass locally; all 8 suites green.
+
+## Phase: crypto priced in USD at checkout
 
 User: "For crypto payments, display the package's current USD equivalent
 instead of PKR … Do NOT hardcode $0.91 or any exchange rate."
