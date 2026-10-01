@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { BellIcon, CheckIcon, Loader2Icon } from "lucide-react";
+import { CheckIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useNotifications, type NotificationRow } from "@/hooks/use-notifications";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
+import Button38 from "@/components/watermelon/button-38";
 
 export function NotificationBell({
   initialRows,
@@ -85,24 +86,11 @@ export function NotificationBell({
 
   return (
     <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border/60 text-foreground/80 hover:border-gold/40 hover:text-foreground"
-      >
-        <BellIcon className="h-4 w-4" />
-        {unread > 0 ? (
-          <span
-            data-testid="notification-badge"
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-burgundy px-1 text-[10px] font-semibold text-foreground"
-          >
-            {unread > 9 ? "9+" : unread}
-          </span>
-        ) : null}
-      </button>
+      {/* watermelon button-38 as the notifications trigger; clicks bubble
+          from its <button> so the dropdown behaviour is unchanged. */}
+      <div onClick={() => setOpen((v) => !v)}>
+        <Button38 />
+      </div>
       {open ? (
         <div
           role="menu"
