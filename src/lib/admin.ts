@@ -1,5 +1,5 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------- types
 
@@ -201,28 +201,28 @@ export type AdminReports = {
 // ---------------------------------------------------------------- public API
 
 export async function getDashboardStats(): Promise<AdminDashboardStats> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_dashboard_stats");
   if (error) throw error;
   return data as AdminDashboardStats;
 }
 
 export async function getDashboardCharts(window: "7d" | "30d" | "90d" = "30d"): Promise<AdminCharts> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_dashboard_charts", { _window: window });
   if (error) throw error;
   return data as AdminCharts;
 }
 
 export async function getReportsOverview(): Promise<AdminReports> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_reports_overview");
   if (error) throw error;
   return data as AdminReports;
 }
 
 export async function searchUsers(query: string, limit = 25, offset = 0): Promise<AdminUserSearchRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_user_search", {
     _query: query,
     _limit: limit,
@@ -233,7 +233,7 @@ export async function searchUsers(query: string, limit = 25, offset = 0): Promis
 }
 
 export async function getUserDetail(userId: string): Promise<AdminUserDetail | null> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_user_detail", { _user_id: userId });
   if (error) throw error;
   const d = data as (AdminUserDetail & { ok?: boolean }) | { ok: false; code: string };
@@ -246,7 +246,7 @@ export async function setUserBan(
   banned: boolean,
   note: string | null
 ): Promise<AdminResult<{ user_id: string; banned: boolean }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_set_user_ban", {
     _user_id: userId,
     _banned: banned,
@@ -257,7 +257,7 @@ export async function setUserBan(
 }
 
 export async function softDeleteUser(userId: string): Promise<AdminResult<{ user_id: string }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_soft_delete_user", { _user_id: userId });
   if (error) throw error;
   return (data ?? { ok: false, code: "rpc_returned_null" }) as AdminResult<{ user_id: string }>;
@@ -268,7 +268,7 @@ export async function walletAdjust(
   amount: number,
   reason: string
 ): Promise<AdminResult<{ user_id: string; amount: number; balance: number; reason: string }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_wallet_adjust", {
     _user_id: userId,
     _amount: amount,
@@ -287,7 +287,7 @@ export async function setSellerVerified(
   sellerUserId: string,
   verified: boolean
 ): Promise<AdminResult<{ verified: boolean }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_seller_set_verified", {
     _seller_user_id: sellerUserId,
     _verified: verified,
@@ -301,7 +301,7 @@ export async function setSellerActive(
   active: boolean,
   refundStrategy: "finish" | "refund_in_progress"
 ): Promise<AdminResult<{ active: boolean; in_flight_kept: number }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_seller_set_active", {
     _seller_user_id: sellerUserId,
     _active: active,
@@ -317,7 +317,7 @@ export async function setSellerActive(
 export async function softDeleteSeller(
   sellerUserId: string
 ): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_soft_delete_seller", {
     _seller_user_id: sellerUserId,
   });
@@ -326,7 +326,7 @@ export async function softDeleteSeller(
 }
 
 export async function listSellers(): Promise<AdminSellerRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_sellers_list");
   if (error) throw error;
   return ((data as { rows: AdminSellerRow[] }).rows ?? []) as AdminSellerRow[];
@@ -336,7 +336,7 @@ export async function listChatLogBookings(): Promise<{
   rows: AdminChatLogBookingRow[];
   retention_days: number;
 }> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_list_chat_log_bookings");
   if (error) throw error;
   return data as { rows: AdminChatLogBookingRow[]; retention_days: number };
@@ -346,7 +346,7 @@ export async function getChatLog(
   bookingId: string,
   reason: string
 ): Promise<AdminResult<{ booking_id: string; status: string; messages: AdminChatLogMessage[] }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_get_chat_log", {
     _booking_id: bookingId,
     _reason: reason,
@@ -365,7 +365,7 @@ export async function listAuditLog(filters?: {
   limit?: number;
   offset?: number;
 }): Promise<AdminAuditRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_list_audit_log", {
     _action_filter: filters?.action ?? null,
     _target_type: filters?.targetType ?? null,
@@ -377,7 +377,7 @@ export async function listAuditLog(filters?: {
 }
 
 export async function getAllSettings(): Promise<AdminSettingRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_settings_get_all");
   if (error) throw error;
   return ((data as { rows: AdminSettingRow[] }).rows ?? []) as AdminSettingRow[];
@@ -387,7 +387,7 @@ export async function updateSetting(
   key: string,
   value: Record<string, unknown>
 ): Promise<AdminResult<{ key: string; value: Record<string, unknown>; is_money: boolean }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_settings_update", {
     _key: key,
     _value: value,
@@ -401,7 +401,7 @@ export async function updateSetting(
 }
 
 export async function listBanners(): Promise<AdminBannerRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_banners_list");
   if (error) throw error;
   return ((data as { rows: AdminBannerRow[] }).rows ?? []) as AdminBannerRow[];
@@ -414,7 +414,7 @@ export async function createBanner(input: {
   starts_at: string;
   ends_at: string;
 }): Promise<AdminResult<{ id: string }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_banner_create", {
     _label: input.label,
     _body: input.body,
@@ -430,7 +430,7 @@ export async function updateBanner(
   id: string,
   patch: Partial<{ label: string; body: string; link: string | null; starts_at: string; ends_at: string; is_active: boolean }>
 ): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_banner_update", {
     _id: id,
     _label: patch.label ?? null,
@@ -445,14 +445,14 @@ export async function updateBanner(
 }
 
 export async function deleteBanner(id: string): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_banner_delete", { _id: id });
   if (error) throw error;
   return (data ?? { ok: false, code: "rpc_returned_null" }) as AdminResult<Record<string, never>>;
 }
 
 export async function listAnnouncements(): Promise<AdminAnnouncementRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_announcements_list");
   if (error) throw error;
   return ((data as { rows: AdminAnnouncementRow[] }).rows ?? []) as AdminAnnouncementRow[];
@@ -463,7 +463,7 @@ export async function createAnnouncement(input: {
   body: string;
   is_active: boolean;
 }): Promise<AdminResult<{ id: string }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_announcement_create", {
     _title: input.title,
     _body: input.body,
@@ -477,7 +477,7 @@ export async function updateAnnouncement(
   id: string,
   patch: Partial<{ title: string; body: string; is_active: boolean }>
 ): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_announcement_update", {
     _id: id,
     _title: patch.title ?? null,
@@ -489,14 +489,14 @@ export async function updateAnnouncement(
 }
 
 export async function deleteAnnouncement(id: string): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_announcement_delete", { _id: id });
   if (error) throw error;
   return (data ?? { ok: false, code: "rpc_returned_null" }) as AdminResult<Record<string, never>>;
 }
 
 export async function listCategories(): Promise<AdminCategoryRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_categories_list");
   if (error) throw error;
   return ((data as { rows: AdminCategoryRow[] }).rows ?? []) as AdminCategoryRow[];
@@ -506,7 +506,7 @@ export async function updateCategory(
   id: string,
   patch: Partial<{ name: string; icon: string; sort_order: number; is_active: boolean }>
 ): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_category_update", {
     _id: id,
     _name: patch.name ?? null,
@@ -519,14 +519,14 @@ export async function updateCategory(
 }
 
 export async function listTokenPacks(): Promise<AdminTokenPackRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_token_packs_list");
   if (error) throw error;
   return ((data as { rows: AdminTokenPackRow[] }).rows ?? []) as AdminTokenPackRow[];
 }
 
 export async function setTokenPackActive(id: string, active: boolean): Promise<AdminResult<Record<string, never>>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_token_pack_set_active", {
     _id: id,
     _active: active,
@@ -539,7 +539,7 @@ export async function setTokenPackPrice(
   id: string,
   pricePkr: number
 ): Promise<AdminResult<{ old: number; new: number }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_token_pack_set_price", {
     _id: id,
     _price_pkr: pricePkr,
@@ -552,7 +552,7 @@ export async function getPaymentDetails(): Promise<{
   jazzcash: Record<string, unknown>;
   easypaisa: Record<string, unknown>;
 }> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_payment_details_get");
   if (error) throw error;
   return data as { jazzcash: Record<string, unknown>; easypaisa: Record<string, unknown> };
@@ -565,7 +565,7 @@ export async function updatePaymentDetails(input: {
   instructions?: string | null;
   qr_data_url?: string | null;
 }): Promise<AdminResult<{ provider: string; value: Record<string, unknown> }>> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_payment_details_update", {
     _provider: input.provider,
     _account_name: input.account_name ?? null,
@@ -581,7 +581,7 @@ export async function updatePaymentDetails(input: {
 }
 
 export async function listTopups(statuses?: string[]): Promise<AdminTopupRow[]> {
-  const admin = createAdminClient();
+  const admin = await createClient();
   const { data, error } = await admin.rpc("admin_topups_list", { _statuses: statuses ?? null });
   if (error) throw error;
   return ((data as { rows: AdminTopupRow[] }).rows ?? []) as AdminTopupRow[];

@@ -21,18 +21,14 @@ export default async function AdminReportsPage() {
       </header>
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label="Bookings · 30d" value={data?.bookings_total_30d.toLocaleString() ?? "—"} />
+        <Stat label="Bookings · 30d" value={(data?.bookings_total_30d ?? 0).toLocaleString()} />
         <Stat
           label="Dispute rate · 30d"
-          value={
-            data
-              ? `${(Number(data.dispute_rate_30d) * 100).toFixed(2)}%`
-              : "—"
-          }
+          value={`${(Number(data?.dispute_rate_30d ?? 0) * 100).toFixed(2)}%`}
         />
         <Stat
           label="Top sellers · 30d"
-          value={data ? String(data.top_sellers_30d.length) : "—"}
+          value={String(data?.top_sellers_30d.length ?? 0)}
         />
       </section>
 
@@ -50,6 +46,9 @@ export default async function AdminReportsPage() {
                 <span className="font-medium">{count as number}</span>
               </li>
             ))}
+            {funnelEntries.length === 0 ? (
+              <li className="text-muted-foreground">No bookings yet.</li>
+            ) : null}
           </ul>
         </div>
 

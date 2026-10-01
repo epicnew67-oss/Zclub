@@ -7,7 +7,41 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: role-aware navbar (this phase)
+## Phase: dashboard loading UX — skeletons, zeros, session-client fix (this phase)
+
+User: "it shows pending queues as loading still, also when there are none it
+should show 0, also when switching to other contents in dashboards a skeleton
+loading can be used maybe? search for gsap skills" (site-wide skeletons
+confirmed via question).
+
+### Done
+
+- **Root cause of the stuck dashboard:** `src/lib/admin.ts` called every
+  admin RPC through the **service-role** client. The RPCs are granted to
+  `authenticated` only (`supabase/migrations/20261104000000_admin_panel.sql:165`),
+  so on cloud the service key got **403** → `getDashboardStats()` threw →
+  the page rendered "—" cards and a permanent "Loading…". Now all functions
+  use the session client (`createClient()` from `@/lib/supabase/server`),
+  which is what the RPCs expect — and `audit_log` entries now carry the real
+  `auth.uid()` actor instead of null.
+- **Admin dashboard** (`src/app/admin/page.tsx`): stats + charts fetch in
+  async children under `<Suspense>` with skeleton fallbacks, so the shell
+  paints instantly and data streams in. Failed fetches fall back to
+  `ZERO_STATS` — an idle platform shows **0**, never "—"/"Loading…". Pending
+  queues always render their four rows. Sparklines draw a flat baseline and
+  "No activity in this window." instead of an empty card. Content enters via
+  the existing GSAP `BlurFade` (reduced-motion-safe, project's `useGsap`).
+- **Route-level skeletons:** new shared `src/components/layout/loading-skeletons.tsx`
+  + `loading.tsx` for `/admin` (dashboard-shaped), `/finance`, `/account`,
+  `/orders`, `/wallet`, `/seller` — sidebar/tab switches now show a skeleton
+  frame instead of a blank screen.
+- **Reports** (`/admin/reports`): numeric zeros instead of "—" + funnel
+  empty state.
+- New test `scripts/verify-admin-dashboard.mjs` (10 checks): asserts numeric
+  stats, all four queues, and no stuck "Loading…"/"—" placeholders on
+  `/admin` + `/admin/reports`; runs `local` and `live`.
+
+## Phase: role-aware navbar
 
 User: "why does it show become a seller and wallet for admin, i have logged
 in, i dont see any admin related things" → fixed.
