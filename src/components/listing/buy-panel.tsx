@@ -57,7 +57,13 @@ function InsufficientBalanceToast({
   );
 }
 
-export function BuyPanel({ listing }: { listing: BrowseListingDetail }) {
+export function BuyPanel({
+  listing,
+  signedIn,
+}: {
+  listing: BrowseListingDetail;
+  signedIn: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -167,23 +173,36 @@ export function BuyPanel({ listing }: { listing: BrowseListingDetail }) {
         </div>
       ) : null}
 
-      <Button
-        type="button"
-        size="lg"
-        className="w-full bg-burgundy text-foreground shadow-glow hover:bg-burgundy/90"
-        disabled={!selectedSlot || pending}
-        onClick={handleReserve}
-      >
-        {pending
-          ? "Reserving…"
-          : selectedSlot
-            ? "Reserve this slot"
-            : "Pick a slot first"}
-      </Button>
-
-      <Button asChild type="button" size="sm" variant="outline" className="w-full">
-        <a href={signInHref()}>Sign in to book</a>
-      </Button>
+      {signedIn ? (
+        <>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full bg-burgundy text-foreground shadow-glow hover:bg-burgundy/90"
+            disabled={!selectedSlot || pending}
+            onClick={handleReserve}
+          >
+            {pending
+              ? "Reserving…"
+              : selectedSlot
+                ? "Reserve this slot"
+                : "Pick a slot first"}
+          </Button>
+          {!selectedSlot ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Choose an open slot above to reserve this call.
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <Button
+          asChild
+          size="lg"
+          className="w-full bg-burgundy text-foreground shadow-glow hover:bg-burgundy/90"
+        >
+          <a href={signInHref()}>Sign in to book</a>
+        </Button>
+      )}
 
       <div className="flex items-center gap-2 border-t border-border/70 pt-3 text-xs text-muted-foreground">
         <span className="grid size-7 place-items-center rounded-md border border-gold/30 bg-gold/10 font-heading text-[10px] text-gold">

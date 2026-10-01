@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BadgeCheckIcon, StarIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -53,6 +54,14 @@ export default async function ListingDetailPage({
 
   const listing = await getListingBySlug(slug);
   if (!listing) notFound();
+
+  // Server-side session (same source as the navbar) so the buy panel
+  // never shows the signed-out CTA to a signed-in visitor.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const signedIn = Boolean(user);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 md:px-6 md:py-12">
@@ -153,7 +162,7 @@ export default async function ListingDetailPage({
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <Suspense fallback={null}>
-            <BuyPanel listing={listing} />
+            <BuyPanel listing={listing} signedIn={signedIn} />
           </Suspense>
         </aside>
       </div>

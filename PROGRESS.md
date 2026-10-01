@@ -7,7 +7,32 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: seller pages multi-seller bug — the real "can't post" blocker (this phase)
+## Phase: buy panel session fix (this phase)
+
+User: listing detail buy panel showed "Sign in to book" for a signed-in
+user (navbar showed the session).
+
+### Root cause
+
+`BuyPanel` had **no session awareness at all** — the "Sign in to book"
+link was rendered unconditionally for every visitor. Not a stale client
+read; the panel simply never knew who was signed in.
+
+### Done
+
+- `listings/[slug]/page.tsx` reads the session server-side (same source
+  as the navbar: `createClient()` + `auth.getUser()`) and passes
+  `signedIn` to the panel.
+- `buy-panel.tsx`: signed-in users get the real flow (primary
+  "Pick a slot first" → "Reserve this slot" once a slot is selected,
+  with a "choose an open slot above" hint); guests get the single
+  "Sign in to book" CTA. The stray secondary sign-in link is gone.
+- New `scripts/verify-listing-buy-panel.mjs` (7 checks): guest sees the
+  sign-in CTA; signed-in never does (with or without `?slot=`), and sees
+  the reserve flow. All pass locally; all 8 suites green. Verified on
+  production with a synthetic approved listing + open slot.
+
+## Phase: seller pages multi-seller bug
 
 Root cause found: the `seller_profiles_select` RLS policy is `USING (true)`
 (public browse needs it), so own-profile lookups **without a `user_id`
