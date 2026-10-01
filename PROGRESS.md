@@ -15,20 +15,24 @@ both using admin accounts. Investigation: the URL renders 200 server-side,
 Vercel runtime logs show no 500s — the screen was Next's **version-skew** error:
 tabs open across one of the two deploys made client-side navigation fail.
 
-**Real root cause found while verifying:** the finance queue was throwing
-`PGRST201` — `topup_requests` has two FKs to `profiles` (`user_id` +
-`reviewed_by`), so `listFinanceQueue()`'s bare `profiles ( … )` embed is
-ambiguous. The page streams its shell (HTTP 200) and then dies — exactly the
-"This page couldn't load / A server error occurred" screen the user hit.
-Fixed with the FK hint `profiles!topup_requests_user_id_fkey`. Audited every
-table with duplicate FKs to one target (user_roles, topup_requests,
-seller_applications, bookings, disputes, payout_requests → profiles): bookings
-was already hinted, topup_requests was the only broken embed; the rest have no
-profile embeds in code.
+**Real root cause found while verifying:** the finance queue was throwing on
+its `profiles` embed — `topup_requests` has two FKs to `profiles` (`user_id` +
+`reviewed_by`), so the bare `profiles ( … )` embed is ambiguous (PGRST201).
+The page streams its shell (HTTP 200) and then dies — exactly the "This page
+couldn't load / A server error occurred" screen the user hit.
+**Fix:** `listFinanceQueue()` no longer embeds at all — it does plain
+single-table selects and merges profiles/token_packs/payments in JS. (Tried
+FK hints first: `profiles!topup_requests_user_id_fkey` still fails on this
+PostgREST with `42703 column profiles_1.email does not exist`, even though the
+same hint style works for bookings — so embeds are off the table for this
+query.) Audited every table with duplicate FKs to one target (user_roles,
+topup_requests, seller_applications, bookings, disputes, payout_requests →
+profiles): bookings uses workable FK hints; the rest have no profile embeds.
 
 ### Done
 
-- `src/lib/topups/server.ts`: disambiguated the profiles embed (PGRST201 fix).
+- `src/lib/topups/server.ts`: `listFinanceQueue()` rewritten without embeds
+  (JS merge) — the top-up queue page now renders.
 - `next.config.ts`: `deploymentId: process.env.VERCEL_DEPLOYMENT_ID` — on a
   stale-build mismatch the client now hard-navigates (auto full reload)
   instead of showing "This page couldn't load". Matters because the site UI

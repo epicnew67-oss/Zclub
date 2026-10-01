@@ -408,14 +408,16 @@ export async function getTopupForUser(
 
 export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
   const admin = createAdminClient();
+
+  // Plain single-table selects + an in-JS merge instead of PostgREST
+  // embeds: topup_requests has TWO FKs to profiles (user_id, reviewed_by),
+  // and this PostgREST rejects both the bare `profiles (...)` embed
+  // (PGRST201 ambiguous) and `profiles!<fk-name>` hints for this pair —
+  // which crashed the page behind the admin top-up notifications (#42703).
   const { data, error } = await admin
     .from("topup_requests")
     .select(
-      `id, created_at, method, tokens, expires_at, reference_code,
-       transaction_id, sender_number, screenshot_path,
-       profiles!topup_requests_user_id_fkey ( email, display_name ),
-       token_packs ( price_pkr ),
-       payments ( external_id, needs_review, flag_reason, actually_paid, pay_amount )`
+      "id, created_at, method, tokens, expires_at, reference_code, transaction_id, sender_number, screenshot_path, user_id, token_pack_id, payment_id"
     )
     .eq("status", "pending")
     .order("created_at", { ascending: true });
@@ -431,21 +433,55 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
     transaction_id: string | null;
     sender_number: string | null;
     screenshot_path: string | null;
-    profiles: { email: string | null; display_name: string | null } | null;
-    token_packs: { price_pkr: number | null } | null;
-    payments:
-      | {
-          external_id: string | null;
-          needs_review: boolean | null;
-          flag_reason: string | null;
-          actually_paid: number | null;
-          pay_amount: number | null;
-        }
-      | null;
+    user_id: string;
+    token_pack_id: string | null;
+    payment_id: string | null;
   }>;
+
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const packIds = [
+    ...new Set(rows.map((r) => r.token_pack_id).filter((id): id is string => Boolean(id))),
+  ];
+  const paymentIds = [
+    ...new Set(rows.map((r) => r.payment_id).filter((id): id is string => Boolean(id))),
+  ];
+
+  type ProfileRow = { id: string; email: string | null; display_name: string | null };
+  type PackRow = { id: string; price_pkr: number | null };
+  type PaymentRow = {
+    id: string;
+    external_id: string | null;
+    needs_review: boolean | null;
+    flag_reason: string | null;
+    actually_paid: number | null;
+    pay_amount: number | null;
+  };
+
+  const [profilesRes, packsRes, paymentsRes] = await Promise.all([
+    userIds.length
+      ? admin.from("profiles").select("id, email, display_name").in("id", userIds)
+      : Promise.resolve({ data: [] as ProfileRow[] }),
+    packIds.length
+      ? admin.from("token_packs").select("id, price_pkr").in("id", packIds)
+      : Promise.resolve({ data: [] as PackRow[] }),
+    paymentIds.length
+      ? admin
+          .from("payments")
+          .select("id, external_id, needs_review, flag_reason, actually_paid, pay_amount")
+          .in("id", paymentIds)
+      : Promise.resolve({ data: [] as PaymentRow[] }),
+  ]);
+
+  const profileById = new Map(((profilesRes.data ?? []) as ProfileRow[]).map((p) => [p.id, p]));
+  const packById = new Map(((packsRes.data ?? []) as PackRow[]).map((p) => [p.id, p]));
+  const paymentById = new Map(((paymentsRes.data ?? []) as PaymentRow[]).map((p) => [p.id, p]));
 
   const items: FinanceQueueItem[] = [];
   for (const row of rows) {
+    const profile = profileById.get(row.user_id) ?? null;
+    const pack = row.token_pack_id ? packById.get(row.token_pack_id) ?? null : null;
+    const payment = row.payment_id ? paymentById.get(row.payment_id) ?? null : null;
+
     let screenshotUrl: string | null = null;
     if (row.screenshot_path) {
       const { data: signed } = await admin.storage
@@ -458,23 +494,20 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
       created_at: row.created_at,
       method: row.method,
       tokens: row.tokens,
-      price_pkr: row.token_packs?.price_pkr ?? null,
-      buyer_email: row.profiles?.email ?? null,
-      buyer_name: row.profiles?.display_name ?? null,
+      price_pkr: pack?.price_pkr ?? null,
+      buyer_email: profile?.email ?? null,
+      buyer_name: profile?.display_name ?? null,
       reference_code: row.reference_code,
       transaction_id: row.transaction_id,
       sender_number: row.sender_number,
       screenshot_path: row.screenshot_path,
       screenshot_url: screenshotUrl,
       expires_at: row.expires_at,
-      payment_needs_review: row.payments?.needs_review ?? null,
-      payment_flag_reason: row.payments?.flag_reason ?? null,
-      payment_external_id: row.payments?.external_id ?? null,
-      payment_actually_paid: Number(row.payments?.actually_paid ?? 0) || null,
-      payment_pay_amount:
-        row.payments?.pay_amount != null
-          ? Number(row.payments.pay_amount)
-          : null,
+      payment_needs_review: payment?.needs_review ?? null,
+      payment_flag_reason: payment?.flag_reason ?? null,
+      payment_external_id: payment?.external_id ?? null,
+      payment_actually_paid: Number(payment?.actually_paid ?? 0) || null,
+      payment_pay_amount: payment?.pay_amount != null ? Number(payment.pay_amount) : null,
     });
   }
   return items;
