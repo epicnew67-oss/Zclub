@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Loader2Icon, Trash2Icon, UploadIcon } from "lucide-react";
+import { InfoIcon, Loader2Icon, Trash2Icon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,64 +120,78 @@ export function ListingForm({ categories, mode }: Props) {
       .catch(() => {});
   }
 
+  /**
+   * Persist the form: uploads new photos, then creates/saves the draft.
+   * Shared by "Save" and "Submit for review" so submitting never sends
+   * stale data.
+   */
+  async function persistEdits(): Promise<{ createdId: string | null }> {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Sign in required.");
+
+    // Upload new files into the owner folder.
+    const newPaths: string[] = [];
+    for (const file of newFiles) {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${user.id}/listing-${mode.kind === "edit" ? mode.listingId : "draft"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from(LISTING_PHOTOS_BUCKET)
+        .upload(path, file, {
+          contentType: file.type || "image/jpeg",
+          upsert: true,
+        });
+      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
+      newPaths.push(path);
+    }
+
+    if (mode.kind === "create") {
+      const result = await createListingDraftAction({
+        title,
+        description,
+        categoryId,
+        durationMinutes: Number(durationMinutes),
+        priceTokens: Number(priceTokens),
+        photoPaths: newPaths,
+      });
+      if (!result.ok) throw new Error(result.error);
+      return { createdId: result.data.id };
+    }
+
+    if (newPaths.length > 0) {
+      const photoRows = newPaths.map((path, idx) => ({
+        listing_id: mode.listingId,
+        path,
+        sort_order: existingPhotos.length + idx,
+      }));
+      const { error: photoErr } = await supabase
+        .from("listing_photos")
+        .insert(photoRows);
+      if (photoErr) throw new Error(photoErr.message);
+    }
+    const result = await updateListingDraftAction(mode.listingId, {
+      title,
+      description,
+      categoryId,
+      durationMinutes: Number(durationMinutes),
+      priceTokens: Number(priceTokens),
+    });
+    if (!result.ok) throw new Error(result.error);
+    return { createdId: null };
+  }
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sign in required.");
-
-      // Upload new files into the owner folder.
-      const newPaths: string[] = [];
-      for (const file of newFiles) {
-        const ext = file.name.split(".").pop() ?? "jpg";
-        const path = `${user.id}/listing-${mode.kind === "edit" ? mode.listingId : "draft"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from(LISTING_PHOTOS_BUCKET)
-          .upload(path, file, {
-            contentType: file.type || "image/jpeg",
-            upsert: true,
-          });
-        if (upErr) throw new Error(upErr.message);
-        newPaths.push(path);
-      }
-
-      if (mode.kind === "create") {
-        const result = await createListingDraftAction({
-          title,
-          description,
-          categoryId,
-          durationMinutes: Number(durationMinutes),
-          priceTokens: Number(priceTokens),
-          photoPaths: newPaths,
-        });
-        if (!result.ok) throw new Error(result.error);
-        toast.success("Draft saved.");
-        router.push(`/seller/listings/${result.data.id}/edit`);
+      const { createdId } = await persistEdits();
+      if (createdId) {
+        toast.success("Draft saved — add a photo, then Submit for review.");
+        router.push(`/seller/listings/${createdId}/edit`);
       } else {
-        if (newPaths.length > 0) {
-          const photoRows = newPaths.map((path, idx) => ({
-            listing_id: mode.listingId,
-            path,
-            sort_order: existingPhotos.length + idx,
-          }));
-          const { error: photoErr } = await supabase
-            .from("listing_photos")
-            .insert(photoRows);
-          if (photoErr) throw new Error(photoErr.message);
-        }
-        const result = await updateListingDraftAction(mode.listingId, {
-          title,
-          description,
-          categoryId,
-          durationMinutes: Number(durationMinutes),
-          priceTokens: Number(priceTokens),
-        });
-        if (!result.ok) throw new Error(result.error);
         toast.success("Saved.");
         router.refresh();
       }
@@ -190,12 +204,21 @@ export function ListingForm({ categories, mode }: Props) {
 
   async function handleSubmitForReview() {
     if (mode.kind !== "edit") return;
+    if (existingPhotos.length + newFiles.length === 0) {
+      setError(
+        "Add at least one photo in the Photos section below, then submit for review."
+      );
+      toast.error("A photo is required before submitting.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
+      // Save any unsaved edits + photos first, then submit.
+      await persistEdits();
       const result = await submitListingForReviewAction(mode.listingId);
       if (!result.ok) throw new Error(result.error);
-      toast.success("Submitted for review.");
+      toast.success("Submitted for review — an admin will approve it shortly.");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit.");
@@ -362,6 +385,18 @@ export function ListingForm({ categories, mode }: Props) {
         <Alert variant="destructive">
           <AlertTitle>Couldn&apos;t save</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {canSubmit ? (
+        <Alert className="border-gold/30 bg-gold/5">
+          <InfoIcon className="text-gold" />
+          <AlertTitle>How to post this listing</AlertTitle>
+          <AlertDescription>
+            {totalPhotos === 0
+              ? "Add at least one photo in the Photos section above, then click Submit for review. An admin approves it and it goes live in Browse."
+              : "Click Submit for review — your changes are saved first. An admin approves it and it goes live in Browse."}
+          </AlertDescription>
         </Alert>
       ) : null}
 

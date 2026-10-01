@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2Icon, SendIcon } from "lucide-react";
@@ -50,9 +51,12 @@ export function SubmitListingButton({
         >
           Submit for review
         </Button>
-        <span className="text-xs text-muted-foreground">
-          Add at least one photo first
-        </span>
+        <Link
+          href={`/seller/listings/${listingId}/edit`}
+          className="text-xs text-gold hover:underline"
+        >
+          Add at least one photo first →
+        </Link>
       </span>
     );
   }

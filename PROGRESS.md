@@ -7,7 +7,27 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: seller-approved popup alert (this phase)
+## Phase: "how do I post it?" — submit clarity (this phase)
+
+User: "i can save as draft but how do i post it?" + Browse shows no
+listings (their listings were still drafts, never submitted).
+
+### Done
+
+- `listing-form.tsx`: **Submit for review now saves unsaved edits and
+  photos first** (shared `persistEdits()`), so submitting never sends
+  stale data; submitting with zero photos shows a clear inline error and
+  toast instead of a raw DB error; a gold "**How to post this listing**"
+  callout explains the exact path (photo → submit → admin approve →
+  live in Browse).
+- The draft card's "Add at least one photo first" hint on
+  `/seller/listings` is now a link straight into the editor.
+- Note: the seller has since added a photo (1 photo row + storage object
+  exist) — they only need to click Submit, then the admin approves it in
+  Admin → Listings. Verified the whole chain live again (user-session
+  photo upload → submit → approve → visible in /browse).
+
+## Phase: seller-approved popup alert
 
 User: "this message should pop when seller board request is accepted" +
 registry link (watermelon alert-13).
