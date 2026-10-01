@@ -45,6 +45,18 @@ cloud too" → shipped.
     `PATCH /v9/projects/zclub {"framework":"nextjs"}` + redeploy.
     Documented in DEPLOY.md so it never bites again.
 - **Live at https://zclub-lime.vercel.app.**
+- **Post-deploy fix — the confirmation link now signs the user in.**
+  Supabase's confirmation link redirects back with `?code=` (PKCE). The
+  check-email page was static, so the code was never exchanged — users
+  landed signed-out even though their email *was* confirmed server-side.
+  `/auth/check-email` now exchanges the code client-side
+  (`exchangeCodeForSession`) and redirects to `/account`; new
+  `ConfirmEmail` component with confirming / done / error states and a
+  friendly fallback ("already confirmed — just sign in"). Verified
+  end-to-end with `scripts/verify-confirm-flow.mjs` (8/8 PASS: PKCE
+  signup → Mailpit link → redirect carries `?code=` →
+  `exchangeCodeForSession` succeeds → session matches → code is
+  single-use).
 
 ### Verified on production
 
