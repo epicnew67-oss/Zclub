@@ -10,8 +10,9 @@ GSAP (animation).
 ## Phase: functionality audit, CSP/auth fixes, deploy prep + push (this phase)
 
 User: "Stop focusing only on visual redesign. I need STRIPCLUB to be a
-fully working application now." + "push here
-https://github.com/epicnew67-oss/S-Club".
+fully working application now." (Repo first pushed to `S-Club`, then
+recreated as **https://github.com/epicnew67-oss/Zclub** with rewritten
+authorship so no other account appears as a contributor.)
 
 ### Broken → fixed
 
@@ -83,12 +84,15 @@ https://github.com/epicnew67-oss/S-Club".
   `db push` all 16 migrations, auth URL config, SMTP) + Vercel steps
   (env var table, CSP rebuild note, post-deploy NOWPayments/LiveKit
   config, smoke-test checklist).
-- Repo pushed to **https://github.com/epicnew67-oss/S-Club** (`main` →
-  commit 4a17927). The machine's system Git Credential Manager held
-  Nivedh555's cached token which 403'd on the org repo; authenticated
-  `gh` as `epicnew67-oss` (device flow) and set the repo-local
-  credential helper (`helper =` reset + `!gh auth git-credential`) so
-  pushes work without overrides.
+- Repo lives at **https://github.com/epicnew67-oss/Zclub** (`main`).
+  Push history: first pushed to `S-Club` (403'd until the machine's
+  system Git Credential Manager was bypassed — it held another account's
+  cached token; repo-local credential helper now uses
+  `!gh auth git-credential` with `epicnew67-oss` active). Commit
+  authorship was then rewritten (`git filter-branch`) to
+  `epicnew67-oss <epicnew67@gmail.com>`, and the repo was recreated as
+  `Zclub` and pushed clean — the contributors list shows only
+  `epicnew67-oss`.
 
 ### Remaining known issues (not fixed — reported)
 
