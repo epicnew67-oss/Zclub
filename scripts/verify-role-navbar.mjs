@@ -88,13 +88,15 @@ async function makeUser(prefix, role) {
 async function pageWith(cookie) {
   const res = await fetch(site, { headers: { cookie } });
   const html = await res.text();
+  const nav = (html.match(/<header[\s\S]*?<\/header>/) ?? [""])[0];
   return {
     status: res.status,
     html,
-    admins: (html.match(/Admin panel/g) ?? []).length,
-    sellers: (html.match(/Seller studio/g) ?? []).length,
-    become: (html.match(/Become a seller/g) ?? []).length,
-    accountMenu: html.includes("Account menu"),
+    nav,
+    admins: (nav.match(/Admin panel/g) ?? []).length,
+    sellers: (nav.match(/Seller studio/g) ?? []).length,
+    become: (nav.match(/Become a seller/g) ?? []).length,
+    accountMenu: nav.includes("Account menu"),
   };
 }
 
@@ -105,27 +107,19 @@ if (mode === "local") {
 
   check("owner page renders 200", owner.status === 200, `status=${owner.status}`);
   check("owner: signed-in navbar", owner.accountMenu);
-  check("owner: Admin panel visible", owner.admins >= 1, `count=${owner.admins}`);
-  check("owner: no Seller studio", owner.sellers === 0, `count=${owner.sellers}`);
-  check(
-    "owner: navbar recruits removed (static copy only)",
-    owner.become === buyer.become - 1,
-    `owner=${owner.become} buyer=${buyer.become}`
-  );
+  check("owner: Admin panel visible", owner.admins >= 1, `nav count=${owner.admins}`);
+  check("owner: no Seller studio", owner.sellers === 0, `nav count=${owner.sellers}`);
+  check("owner: no recruiting link", owner.become === 0, `nav count=${owner.become}`);
 
   check("seller: signed-in navbar", seller.accountMenu);
-  check("seller: Seller studio visible", seller.sellers >= 1, `count=${seller.sellers}`);
-  check("seller: no Admin panel", seller.admins === 0, `count=${seller.admins}`);
-  check(
-    "seller: no navbar recruiting link",
-    seller.become === owner.become,
-    `seller=${seller.become} owner=${owner.become}`
-  );
+  check("seller: Seller studio visible", seller.sellers >= 1, `nav count=${seller.sellers}`);
+  check("seller: no Admin panel", seller.admins === 0, `nav count=${seller.admins}`);
+  check("seller: no recruiting link", seller.become === 0, `nav count=${seller.become}`);
 
   check("buyer: signed-in navbar", buyer.accountMenu);
-  check("buyer: no Admin panel", buyer.admins === 0, `count=${buyer.admins}`);
-  check("buyer: no Seller studio", buyer.sellers === 0, `count=${buyer.sellers}`);
-  check("buyer: navbar has Become a seller", buyer.become >= 1, `count=${buyer.become}`);
+  check("buyer: no Admin panel", buyer.admins === 0, `nav count=${buyer.admins}`);
+  check("buyer: no Seller studio", buyer.sellers === 0, `nav count=${buyer.sellers}`);
+  check("buyer: navbar has Become a seller", buyer.become >= 1, `nav count=${buyer.become}`);
 } else {
   const { data: login, error } = await admin.auth.signInWithPassword({
     email: "admin@stripclubonline.store",
@@ -135,9 +129,9 @@ if (mode === "local") {
   const owner = await pageWith(sessionCookie(login.session));
   check("live admin page renders 200", owner.status === 200, `status=${owner.status}`);
   check("live admin: signed-in navbar", owner.accountMenu);
-  check("live admin: Admin panel visible", owner.admins >= 1, `count=${owner.admins}`);
-  check("live admin: no Seller studio", owner.sellers === 0, `count=${owner.sellers}`);
-  check("live admin: Become a seller only in footer", owner.become === 1, `count=${owner.become}`);
+  check("live admin: Admin panel visible", owner.admins >= 1, `nav count=${owner.admins}`);
+  check("live admin: no Seller studio", owner.sellers === 0, `nav count=${owner.sellers}`);
+  check("live admin: no recruiting link", owner.become === 0, `nav count=${owner.become}`);
 }
 
 console.log(`\n${fails === 0 ? "ALL ROLE-NAVBAR CHECKS PASSED" : `${fails} ROLE-NAVBAR CHECK(S) FAILED`} (${mode})`);
