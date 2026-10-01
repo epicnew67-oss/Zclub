@@ -8,6 +8,7 @@
  */
 
 import "server-only";
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LISTING_PHOTOS_BUCKET } from "@/lib/listings/photos-bucket";
 import { signPhotoPaths as _signPhotoPaths } from "@/lib/listings";
@@ -535,7 +536,7 @@ export async function getSwarmImages(limit = 12): Promise<SwarmImage[]> {
     .filter((image): image is SwarmImage => image !== null);
 }
 
-export async function getListingBySlug(slug: string): Promise<BrowseListingDetail | null> {
+async function getListingBySlugUncached(slug: string): Promise<BrowseListingDetail | null> {
   const parts = splitListingSlug(slug);
   if (!parts) return null;
   const admin = createAdminClient();
@@ -633,3 +634,5 @@ export async function getListingBySlug(slug: string): Promise<BrowseListingDetai
 }
 
 export { signOne as signSinglePhotoPath };
+
+export const getListingBySlug = cache(getListingBySlugUncached);

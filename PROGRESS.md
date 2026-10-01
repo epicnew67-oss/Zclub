@@ -7,7 +7,31 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: checkout coins allowlist, cancel payment, speed (this phase)
+## Phase: slot timezone bug + picker UX + listing speed (this phase)
+
+User: added slot at 11:05 PM but it showed as 4:35 AM; second click said
+"slot overlaps"; slots hard to select/unselect; listing page slow.
+
+### Root cause (timezone)
+
+`addSlotAction` parsed the picked wall-clock string on the SERVER —
+Vercel runs UTC, so "23:05" was stored as 23:05Z instead of 17:35Z: slots
+shifted by the local offset (+5:30 seen in production) and re-clicking
+collided with the previously stored copy ("overlaps"). Fixed: the BROWSER
+converts the picked time to UTC (`toISOString()`) and the action stores it
+verbatim; the round-trip is regression-tested (11:05 PM stays 11:05 PM).
+
+### Done
+
+- `slots-picker`: clicking a selected slot now **unselects** it (toggle),
+  and selecting smooth-scrolls to the buy panel so "Reserve" is in view.
+- Listing page speed: `getListingBySlug` is wrapped in React `cache()` —
+  `generateMetadata` + the page previously fetched the listing (and signed
+  all photos) twice per view.
+- `verify-availability-calendar.mjs` now 10 local checks (timezone
+  round-trip included); all pass; all 8 suites green.
+
+## Phase: checkout coins allowlist, cancel payment, speed
 
 User: page switches feel slow; no autoscroll to the crypto pay button;
 restrict coins to nine named assets; add cancel for crypto payments.

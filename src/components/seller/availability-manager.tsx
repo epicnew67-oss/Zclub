@@ -199,9 +199,16 @@ export function AvailabilityManager({ listings, slots }: Props) {
       if (!startsAtLocal) {
         throw new Error("Pick a start date and time.");
       }
+      // Convert the picked wall-clock time using the BROWSER's timezone.
+      // (Parsing this string on the server would assume the server's
+      // zone — Vercel runs UTC, which shifted slots.)
+      const startsAtDate = new Date(startsAtLocal);
+      if (Number.isNaN(startsAtDate.getTime())) {
+        throw new Error("Pick a valid start date and time.");
+      }
       const result = await addSlotAction({
         listingId: selectedListing.id,
-        startsAtLocal,
+        startsAtIso: startsAtDate.toISOString(),
         durationMinutes: Number(duration),
         priceTokens: Number(price),
       });

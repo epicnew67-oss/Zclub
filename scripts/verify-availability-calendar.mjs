@@ -105,6 +105,30 @@ check(`${mode}: slot removed`, !del.error, del.error?.message);
 const after = await (await fetch(`${site}/seller/availability`, { headers: { cookie } })).text();
 check(`${mode}: event dot gone after removal`, !after.includes("bg-[#cecdd1]"));
 
+// Timezone round-trip: the browser converts the picked wall-clock time to
+// UTC before it reaches the server; the page must show the same wall time
+// back (the old server-side parse shifted slots by the local offset).
+const wall = new Date();
+wall.setDate(wall.getDate() + 3);
+wall.setHours(23, 5, 0, 0);
+const tzAdd = await client.rpc("add_listing_slot", {
+  _listing_id: listing.id,
+  _starts_at: wall.toISOString(),
+  _ends_at: new Date(wall.getTime() + 15 * 60 * 1000).toISOString(),
+  _price_tokens: 100,
+});
+check(`${mode}: slot stored via UTC conversion`, !tzAdd.error, tzAdd.error?.message);
+const tzHtml = await (await fetch(`${site}/seller/availability`, { headers: { cookie } })).text();
+if (mode === "local") {
+  // Local: the dev server shares this machine's timezone, so the wall
+  // time must round-trip exactly.
+  check("local: wall time round-trips (11:05 PM)", tzHtml.includes("11:05 PM"));
+} else {
+  // Live SSR renders in UTC (Vercel); hydration re-localizes. Assert the
+  // event itself round-trips.
+  check("live: UTC-converted slot appears in the calendar", tzHtml.includes("bg-[#cecdd1]"));
+}
+
 await admin.from("availability_slots").delete().eq("listing_id", listing.id);
 await admin.from("listings").delete().eq("id", listing.id);
 await admin.from("seller_profiles").delete().eq("id", profile.id);

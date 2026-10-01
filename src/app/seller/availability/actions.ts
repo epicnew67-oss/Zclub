@@ -8,13 +8,14 @@ export type AvailabilityActionResult<T = void> =
   | { ok: false; error: string };
 
 /**
- * Add a slot. `startsAtLocal` is the value from
- * `<input type="datetime-local">` (no timezone) — interpreted as the
- * user's local time, then stored as UTC.
+ * Add a slot. `startsAtIso` is a UTC ISO string: the BROWSER converts the
+ * picked local wall-clock time (parsing "YYYY-MM-DDTHH:mm" server-side
+ * would wrongly assume the server's timezone — Vercel runs UTC, which
+ * shifted slots by the buyer's offset).
  */
 export async function addSlotAction(input: {
   listingId: string;
-  startsAtLocal: string; // "YYYY-MM-DDTHH:mm"
+  startsAtIso: string; // UTC ISO from the client
   durationMinutes: number;
   priceTokens: number;
 }): Promise<AvailabilityActionResult<{ slotId: string }>> {
@@ -25,7 +26,7 @@ export async function addSlotAction(input: {
   if (!user) return { ok: false, error: "Sign in required." };
 
   if (!input.listingId) return { ok: false, error: "Pick a listing first." };
-  if (!input.startsAtLocal) {
+  if (!input.startsAtIso) {
     return { ok: false, error: "Pick a start date and time." };
   }
   if (
@@ -39,11 +40,7 @@ export async function addSlotAction(input: {
     return { ok: false, error: "Price must be greater than zero." };
   }
 
-  // Treat the local datetime as the browser's local timezone by
-  // constructing a Date and serializing to UTC ISO. The Date
-  // constructor with a "YYYY-MM-DDTHH:mm" string interprets it as
-  // local time, which matches what the input shows.
-  const startsAtDate = new Date(input.startsAtLocal);
+  const startsAtDate = new Date(input.startsAtIso);
   if (Number.isNaN(startsAtDate.getTime())) {
     return { ok: false, error: "Invalid date." };
   }

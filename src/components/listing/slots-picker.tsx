@@ -38,6 +38,15 @@ export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {
       else sp.delete("slot");
       const qs = sp.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      if (slotId) {
+        // Bring the buy panel (price + Reserve) into view so the next
+        // step is obvious.
+        setTimeout(() => {
+          document
+            .querySelector("[data-buy-panel]")
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 120);
+      }
     },
     [params, pathname, router]
   );
@@ -93,7 +102,8 @@ export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {
                     <button
                       type="button"
                       aria-pressed={isSelected}
-                      onClick={() => select(slot.id)}
+                      onClick={() => select(isSelected ? null : slot.id)}
+                      title={isSelected ? "Click to unselect" : "Click to select"}
                       className={cn(
                         "rounded-lg border px-3 py-1.5 text-sm transition-all duration-200",
                         isSelected
