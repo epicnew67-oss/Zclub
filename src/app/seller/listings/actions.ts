@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { alertListingSubmitted } from "@/lib/admin-alerts";
 
 export type CreateListingInput = {
   title: string;
@@ -172,6 +174,26 @@ export async function submitListingForReviewAction(
     _listing_id: listingId,
   } as never);
   if (error) return { ok: false, error: error.message };
+
+  // Ping the admin queue so submissions don't sit unseen — the listing
+  // stays invisible to customers until an admin approves it.
+  try {
+    const admin = createAdminClient();
+    const { data: row } = await admin
+      .from("listings")
+      .select("title, seller:seller_profiles(display_name)")
+      .eq("id", listingId)
+      .maybeSingle();
+    await alertListingSubmitted({
+      listingId,
+      title: (row?.title as string) ?? "Listing",
+      sellerName:
+        ((row?.seller as { display_name?: string } | null)?.display_name) ??
+        "A seller",
+    });
+  } catch {
+    // best effort — the listing is already submitted
+  }
 
   revalidatePath("/seller/listings");
   revalidatePath("/admin/listings");

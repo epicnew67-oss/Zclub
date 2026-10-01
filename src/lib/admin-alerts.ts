@@ -100,6 +100,24 @@ export async function alertNewSellerApplication(input: {
   );
 }
 
+/**
+ * A seller submitted a listing for review — ping the admin queue so
+ * submissions don't sit unseen (the listing stays invisible to customers
+ * until an admin approves it).
+ */
+export async function alertListingSubmitted(input: {
+  listingId: string;
+  title: string;
+  sellerName: string;
+}): Promise<void> {
+  await notifyRoles(
+    "system",
+    "New listing submitted for review",
+    `${input.sellerName} submitted “${truncate(input.title, 80)}” — review and approve it.`,
+    `/admin/listings`
+  ).catch(() => undefined);
+}
+
 function truncate(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }

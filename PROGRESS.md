@@ -7,7 +7,35 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: payment QR image upload (this phase)
+## Phase: seller listing visibility fix (this phase)
+
+User: "i registered my self as seller and i dont see the listing in a
+customer account, fix it."
+
+### Root cause
+
+Browse only shows `status = 'approved'` listings. The seller's listing was
+a **draft with no photos**: the "Submit for review" action lived only inside
+the edit form (easy to miss) and the DB refuses photo-less submissions — so
+nothing ever reached pending_review, the admin queue stayed empty, and
+customers saw nothing.
+
+### Done
+
+- `/seller/listings` cards for `draft`/`rejected` listings now render a
+  one-click **Submit for review** button (`submit-listing-button.tsx`).
+  Photo-less drafts show a disabled button + "Add at least one photo first"
+  hint (matches the DB rule).
+- Submitting now pings admins (**"New listing submitted for review"** →
+  `/admin/listings` + push) so approvals don't sit unseen; the
+  approve → approved → browse-visible chain is unchanged.
+- New `scripts/verify-seller-submit-ui.mjs` (6 checks): draft cards render
+  the button, photo-less drafts are disabled with the hint. All pass
+  locally; all 8 suites green.
+- Verified the live end-to-end chain on production: create seller + draft →
+  submit → approve → the listing appears in `/browse` (customer view).
+
+## Phase: payment QR image upload
 
 User: replace the JazzCash/Easypaisa "QR data URL" text inputs with a real
 image upload (click → pick PNG/JPG/WebP → stored in Supabase Storage).

@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { listSellerListings, type ListingStatus } from "@/lib/listings";
+import { SubmitListingButton } from "@/components/seller/submit-listing-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,9 +139,17 @@ export default async function SellerListingsPage() {
                     <span>{listing.duration_minutes} min</span>
                     {listing.category ? <span>{listing.category.name}</span> : null}
                   </div>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/seller/listings/${listing.id}/edit`}>Edit</Link>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/seller/listings/${listing.id}/edit`}>Edit</Link>
+                    </Button>
+                    {listing.status === "draft" || listing.status === "rejected" ? (
+                      <SubmitListingButton
+                        listingId={listing.id}
+                        photoCount={listing.photos.length}
+                      />
+                    ) : null}
+                  </div>
                 </CardContent>
                 {listing.status === "rejected" && listing.review_note ? (
                   <div className="border-t border-border/70 px-4 py-3 text-xs">
