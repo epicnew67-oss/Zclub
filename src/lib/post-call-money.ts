@@ -1,4 +1,5 @@
 import "server-only";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------- types
@@ -96,17 +97,20 @@ export type MarkPayoutPaidResult =
 
 // ---------------------------------------------------------------- public API
 //
-// All money / state writes funnel through SECURITY DEFINER RPCs. The
-// admin client is used here only because the caller is a server action
-// or a service-role job (the sweep) — never a browser.
+// Money / state writes funnel through SECURITY DEFINER RPCs. RPCs that
+// resolve the actor from auth.uid() (disputes, payouts, bookings chat)
+// must be called with the USER's session client — calling them with the
+// service client means "no user", and they fail their permission checks.
+// The admin client remains for service-role jobs (lists, sweep, escrow
+// release) that take explicit ids instead of a session.
 //
 
 export async function openDispute(
   bookingId: string,
   reason: string
 ): Promise<OpenDisputeResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("open_dispute", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("open_dispute", {
     _booking_id: bookingId,
     _reason: reason,
   } as never);
@@ -131,8 +135,8 @@ export async function resolveDispute(
   note: string,
   refundPct?: number
 ): Promise<ResolveDisputeResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("resolve_dispute", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("resolve_dispute", {
     _booking_id: bookingId,
     _outcome: outcome,
     _note: note,
@@ -143,8 +147,8 @@ export async function resolveDispute(
 }
 
 export async function requestPayout(amount: number): Promise<RequestPayoutResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("request_payout", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("request_payout", {
     _amount: amount,
   } as never);
   if (error) throw error;
@@ -152,8 +156,8 @@ export async function requestPayout(amount: number): Promise<RequestPayoutResult
 }
 
 export async function cancelPayoutRequest(id: string): Promise<CancelPayoutResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("cancel_payout_request", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("cancel_payout_request", {
     _id: id,
   } as never);
   if (error) throw error;
@@ -161,8 +165,8 @@ export async function cancelPayoutRequest(id: string): Promise<CancelPayoutResul
 }
 
 export async function approvePayout(id: string): Promise<ApprovePayoutResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("approve_payout", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("approve_payout", {
     _id: id,
   } as never);
   if (error) throw error;
@@ -173,8 +177,8 @@ export async function rejectPayout(
   id: string,
   note: string
 ): Promise<RejectPayoutResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("reject_payout", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("reject_payout", {
     _id: id,
     _note: note,
   } as never);
@@ -186,8 +190,8 @@ export async function markPayoutPaid(
   id: string,
   paymentReference: string
 ): Promise<MarkPayoutPaidResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("mark_payout_paid", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mark_payout_paid", {
     _id: id,
     _payment_reference: paymentReference,
   } as never);

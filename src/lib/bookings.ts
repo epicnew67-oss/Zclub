@@ -15,12 +15,14 @@
  */
 
 import "server-only";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PurchaseResult =
   | { ok: true; bookingId: string; chatId: string }
   | { ok: false; code: "INSUFFICIENT_BALANCE"; have: number; need: number; shortfall: number }
   | { ok: false; code: "slot_already_taken" }
+  | { ok: false; code: "purchase_failed" }
   | {
       ok: false;
       code:
@@ -110,14 +112,31 @@ function rpcErrorAsCode(message: string | undefined): string | null {
 
 // ---------------------------------------------------------------- purchase
 
+/**
+ * Buy a slot. Uses the USER's session client: purchase_slot reads
+ * auth.uid() as the buyer, so the service client (which has no user)
+ * always raised "sign in required" — surfacing as the generic
+ * "purchase failed" toast for every booking.
+ */
 export async function purchaseSlot(slotId: string): Promise<PurchaseResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("purchase_slot", {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("purchase_slot", {
     _slot_id: slotId,
   } as never);
   if (error) {
-    const code = rpcErrorAsCode(error.message) ?? "purchase_failed";
-    return { ok: false, code: code as PurchaseResult["ok"] extends false ? never : never };
+    const insuff = error.message.match(
+      /INSUFFICIENT_BALANCE have=(\d+), need=(\d+), shortfall=(\d+)/
+    );
+    if (insuff) {
+      return {
+        ok: false,
+        code: "INSUFFICIENT_BALANCE",
+        have: Number(insuff[1]),
+        need: Number(insuff[2]),
+        shortfall: Number(insuff[3]),
+      };
+    }
+    return { ok: false, code: "purchase_failed" };
   }
   const row = (data ?? {}) as PurchaseRpcRow;
   if (row.ok && row.booking_id && row.chat_id) {
@@ -148,8 +167,9 @@ export async function purchaseSlot(slotId: string): Promise<PurchaseResult> {
 // ---------------------------------------------------------------- cancel
 
 export async function cancelBooking(bookingId: string): Promise<CancelResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("cancel_booking", {
+  // cancel_booking resolves the role from auth.uid() — session client.
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("cancel_booking", {
     _booking_id: bookingId,
   } as never);
   if (error) return { ok: false, code: "not_found" };
@@ -176,8 +196,9 @@ export async function cancelBooking(bookingId: string): Promise<CancelResult> {
 // ---------------------------------------------------------------- no-show
 
 export async function markNoShowRefund(bookingId: string): Promise<NoShowResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("mark_no_show_refund", {
+  // mark_no_show_refund checks participation via auth.uid().
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mark_no_show_refund", {
     _booking_id: bookingId,
   } as never);
   if (error) return { ok: false, code: "not_found" };
@@ -199,8 +220,9 @@ export async function sendChatMessage(
   chatId: string,
   body: string
 ): Promise<SendMessageResult> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("send_chat_message", {
+  // send_chat_message stamps the sender from auth.uid().
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("send_chat_message", {
     _chat_id: chatId,
     _body: body,
   } as never);

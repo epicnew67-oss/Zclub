@@ -7,7 +7,37 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: slot timezone bug + picker UX + listing speed (this phase)
+## Phase: booking purchase fix — session client for user RPCs (this phase)
+
+User: "it says purchase failed when i try to book a slot."
+
+### Root cause
+
+`purchaseSlot` (and every other user-context RPC wrapper) called the
+SECURITY DEFINER RPC with the **service-role client**, so `auth.uid()`
+inside the function was NULL → `purchase_slot` raised "sign in required"
+→ the wrapper mapped it to an unknown code → the UI fell through to the
+generic "Could not complete the purchase. Try again." The local suites
+never caught it because they exercise the RPCs directly with session
+clients, not the wrappers.
+
+### Done
+
+- Switched the user-context wrappers to the **session client**
+  (`createClient()`): `lib/bookings.ts` — purchaseSlot, cancelBooking,
+  markNoShowRefund, sendChatMessage; `lib/post-call-money.ts` —
+  openDispute, resolveDispute, requestPayout, cancelPayoutRequest,
+  approvePayout, rejectPayout, markPayoutPaid. (Service-role jobs keep
+  the admin client; read helpers take explicit ids.)
+- `purchaseSlot`'s raised `INSUFFICIENT_BALANCE have/need/shortfall`
+  exception is now parsed back into the typed result; unexpected errors
+  return a new honest `purchase_failed` code instead of the bogus cast.
+- Verified end-to-end with a temporary dev route exercising the real
+  wrapper over HTTP: funded buyer → purchase succeeds; unfunded buyer →
+  `INSUFFICIENT_BALANCE` with numbers. Route removed after the check.
+  All 8 suites green.
+
+## Phase: slot timezone bug + picker UX + listing speed
 
 User: added slot at 11:05 PM but it showed as 4:35 AM; second click said
 "slot overlaps"; slots hard to select/unselect; listing page slow.
