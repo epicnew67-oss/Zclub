@@ -42,11 +42,31 @@ export function FinanceTopupQueue({ initialItems }: Props) {
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     setItems(initialItems);
   }, [initialItems]);
+
+  // Deep link from admin notifications: /finance/topups?id=<topupId>
+  // scrolls to that card and rings it briefly so the notification lands
+  // on the exact request.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (!id) return;
+    setHighlightId(id);
+    const scrollTimer = setTimeout(() => {
+      document
+        .getElementById(`topup-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    const clearTimer = setTimeout(() => setHighlightId(null), 5000);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
+  }, []);
 
   // Keep the queue fresh without relying on realtime (RLS own-only doesn't
   // broadcast others' top-ups to finance viewers).
@@ -126,7 +146,16 @@ export function FinanceTopupQueue({ initialItems }: Props) {
 
       <div className="grid gap-4">
         {items.map((item) => (
-          <Card key={item.id} className={item.payment_needs_review ? "border-gold/40" : undefined}>
+          <Card
+            key={item.id}
+            id={`topup-${item.id}`}
+            className={[
+              item.payment_needs_review ? "border-gold/40" : "",
+              highlightId === item.id ? "ring-2 ring-gold/70" : "",
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined}
+          >
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-base">

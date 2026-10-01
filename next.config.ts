@@ -105,6 +105,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Version-skew protection: Vercel sets VERCEL_DEPLOYMENT_ID per build.
+  // With it set, clients holding an older build hard-navigate on mismatch
+  // instead of failing with "This page couldn't load" after a redeploy.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   turbopack: {
     root: __dirname,
   },

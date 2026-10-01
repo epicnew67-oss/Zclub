@@ -7,7 +7,30 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: dashboard loading UX — skeletons, zeros, session-client fix (this phase)
+## Phase: version-skew fix + friendly errors + finance deep link (this phase)
+
+User reported "This page couldn't load — a server error occurred" when clicking
+a top-up notification (`/finance/topups?id=…`) while they and their client were
+both using admin accounts. Investigation: the URL renders 200 server-side,
+Vercel runtime logs show no 500s — the screen was Next's **version-skew** error:
+tabs open across one of the two deploys made client-side navigation fail.
+
+### Done
+
+- `next.config.ts`: `deploymentId: process.env.VERCEL_DEPLOYMENT_ID` — on a
+  stale-build mismatch the client now hard-navigates (auto full reload)
+  instead of showing "This page couldn't load". Matters because the site UI
+  is being updated frequently.
+- `src/app/error.tsx`: branded root error boundary with "Try again" (reset)
+  — users never see the raw Next error screen again.
+- `finance/topup-queue.tsx`: the admin notification deep link
+  (`/finance/topups?id=<topupId>`) now scrolls to that card and rings it gold
+  for 5s (the `id` param was previously ignored by its only consumer).
+- Note: the reported top-up (`fadc34fa…`, 500 tokens, JazzCash, window
+  expired 07:33 UTC) belongs to the **admin account itself** — a wallet-flow
+  test — and is still `pending` in the finance queue.
+
+## Phase: dashboard loading UX — skeletons, zeros, session-client fix
 
 User: "it shows pending queues as loading still, also when there are none it
 should show 0, also when switching to other contents in dashboards a skeleton
