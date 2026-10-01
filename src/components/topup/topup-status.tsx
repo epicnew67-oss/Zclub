@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -16,7 +17,10 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCryptoCode, type TopupStatusData } from "@/lib/topups/types";
-import { syncCryptoTopupAction } from "@/app/wallet/topup/actions";
+import {
+  cancelCryptoTopupAction,
+  syncCryptoTopupAction,
+} from "@/app/wallet/topup/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,13 +68,16 @@ const CRYPTO_STATUS_COPY: Record<string, string> = {
   failed: "Payment failed",
   refunded: "Refunded — under review",
   expired: "Payment window expired",
+  cancelled: "Cancelled",
 };
 
 export function TopupStatus({ userId: _userId, topup: initial, payment: initialPayment, pack, returnUrl }: Props) {
+  const router = useRouter();
   const [topup, setTopup] = useState(initial);
   const [payment, setPayment] = useState(initialPayment);
   const [successRedirectFired, setSuccessRedirectFired] = useState(topup.status === "completed");
   const [copied, setCopied] = useState<"address" | "amount" | null>(null);
+  const [cancelPending, startCancel] = useTransition();
 
   const isPending = topup.status === "pending";
   const isCrypto = topup.method === "crypto";
@@ -210,11 +217,25 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
 
   const title = topup.status === "completed"
     ? "Payment confirmed"
-    : hasDirectCrypto && cryptoLabel
+    : hasDirectCrypto && isPending && cryptoLabel
       ? cryptoLabel
       : isPending
         ? "Awaiting verification"
         : statusBadge.label;
+
+  function handleCancelPayment() {
+    startCancel(async () => {
+      const result = await cancelCryptoTopupAction(topup.id);
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Payment cancelled.");
+      setTopup((prev) => ({ ...prev, status: "expired" }));
+      setPayment((prev) => (prev ? { ...prev, pay_status: "cancelled" } : prev));
+      router.refresh();
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -385,6 +406,21 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
             {topup.status === "completed" ? (
               <Button asChild className="shadow-gold">
                 <Link href={returnUrl}>Continue</Link>
+              </Button>
+            ) : null}
+            {hasDirectCrypto && isPending ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={cancelPending}
+                onClick={handleCancelPayment}
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              >
+                {cancelPending ? (
+                  <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                ) : null}
+                Cancel payment
               </Button>
             ) : null}
             <Button asChild variant="ghost">

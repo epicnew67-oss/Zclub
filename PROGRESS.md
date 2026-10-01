@@ -7,7 +7,35 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: availability calendar widget + slot removal + AM/PM (this phase)
+## Phase: checkout coins allowlist, cancel payment, speed (this phase)
+
+User: page switches feel slow; no autoscroll to the crypto pay button;
+restrict coins to nine named assets; add cancel for crypto payments.
+
+### Done
+
+- **Coin allowlist**: `ALLOWED_CRYPTO_CURRENCIES` in `nowpayments.ts` —
+  USDT TRC20/ERC20/BEP20/Solana (`usdttrc20`, `usdterc20`, `usdtbsc`,
+  `usdtsol`), LTC, BTC, ETH, BNB BEP20 (`bnbbsc`), USDC ERC20 (`usdc`).
+  All nine verified enabled on the account; the live catalog is filtered
+  and ordered to exactly this list (server-side, so `createCryptoTopup`
+  rejects anything else).
+- **Autoscroll**: picking a coin smooth-scrolls the pay CTA panel into
+  view (mobile-friendly).
+- **Cancel payment**: `cancelCryptoTopupAction` (owner-only, pending-only,
+  crypto-only) closes the top-up as expired + marks the payment
+  `cancelled`; the payment screen shows a "Cancel payment" button while
+  pending and the title/status copy handles the cancelled state. If crypto
+  arrives anyway, the IPN path still credits it — funds are never lost.
+- **Speed**: the PKR→USD rate is now cached 10 minutes (`next.revalidate`)
+  so `/wallet/topup` no longer waits on the external rate API on every
+  render; navbar links prefetch (Browse/Wallet/Seller/Admin); new
+  `loading.tsx` skeletons for `/browse`, `/notifications` and the listing
+  detail page.
+- `verify-crypto-flow.mjs` now also asserts the cancel option renders on a
+  pending crypto payment screen — all checks pass; all 8 suites green.
+
+## Phase: availability calendar widget
 
 User: "i dont see any am or pm on the calendar, also the upcoming slots
 are not being deletted asap" + requested the watermelon calendar-widget.

@@ -144,6 +144,7 @@ check("A: shows deposit address", html.includes(payAddress));
 check("A: QR code present", html.includes("Payment QR code"));
 check("A: copy address button", html.includes("Copy address"));
 check("A: copy amount button", html.includes("Copy amount"));
+check("A: cancel payment option present", html.includes("Cancel payment"));
 
 const directPayload = {
   payment_id: paymentId,

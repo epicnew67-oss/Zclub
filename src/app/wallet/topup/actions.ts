@@ -41,6 +41,63 @@ export async function createCryptoTopupAction(
 }
 
 /**
+ * Buyer-initiated cancel for a pending crypto payment. Only the owner can
+ * cancel, only while pending; the payment row keeps its state but the
+ * top-up is closed. If crypto still arrives after cancelling, the IPN
+ * path credits it anyway — funds are never lost.
+ */
+export async function cancelCryptoTopupAction(topupId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in required." } as const;
+
+  try {
+    const admin = createAdminClient();
+    const { data: topup } = await admin
+      .from("topup_requests")
+      .select("id, user_id, method, status, payment_id")
+      .eq("id", topupId)
+      .maybeSingle();
+    if (!topup || topup.user_id !== user.id) {
+      return { error: "Top-up not found." } as const;
+    }
+    if (topup.method !== "crypto") {
+      return { error: "Only crypto payments can be cancelled here." } as const;
+    }
+    if (topup.status !== "pending") {
+      return { error: "This payment is no longer pending." } as const;
+    }
+
+    const { error } = await admin
+      .from("topup_requests")
+      .update({
+        status: "expired",
+        processed_at: new Date().toISOString(),
+        review_note: "Cancelled by the buyer",
+      })
+      .eq("id", topupId)
+      .eq("status", "pending");
+    if (error) throw error;
+
+    if (topup.payment_id) {
+      await admin
+        .from("payments")
+        .update({ pay_status: "cancelled" })
+        .eq("id", topup.payment_id);
+    }
+
+    revalidatePath("/wallet/topup/status");
+    return { ok: true } as const;
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not cancel the payment.",
+    } as const;
+  }
+}
+
+/**
  * Coins currently enabled for our NOWPayments account (server-fetched and
  * cached; the browser never sees the API key).
  */

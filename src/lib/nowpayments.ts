@@ -65,14 +65,29 @@ const PINNED_POPULAR = new Set([
   "bnbbsc",
 ]);
 
+// Coins the checkout is allowed to offer, in display order. The catalog
+// below still comes live from NOWPayments — this is just the allowlist.
+export const ALLOWED_CRYPTO_CURRENCIES = [
+  "usdttrc20", // USDT — TRON (TRC20)
+  "usdterc20", // USDT — Ethereum (ERC20)
+  "usdtbsc", //   USDT — BNB Smart Chain (BEP20)
+  "usdtsol", //   USDT — Solana
+  "ltc", //       Litecoin
+  "btc", //       Bitcoin
+  "eth", //       Ethereum
+  "bnbbsc", //    BNB — BNB Smart Chain (BEP20)
+  "usdc", //      USDC — Ethereum (ERC20)
+] as const;
+
 let currencyCache: { at: number; data: CryptoCurrency[] } | null = null;
 const CURRENCY_TTL_MS = 10 * 60 * 1000;
 
 /**
  * Coins enabled for our NOWPayments account, enriched with names,
- * networks and logos from /v1/full-currencies. The catalog is large
- * (300+), so it is cached in-memory for 10 minutes per server instance.
- * Never hardcoded: this is whatever the account currently supports.
+ * networks and logos from /v1/full-currencies, then restricted to the
+ * checkout allowlist (in its order). The catalog is large (300+), so it
+ * is cached in-memory for 10 minutes per server instance. Never
+ * hardcoded: this is whatever the account currently supports.
  */
 export async function listCryptoCurrencies(): Promise<CryptoCurrency[]> {
   if (!isNowPaymentsConfigured()) return [];
@@ -113,13 +128,12 @@ export async function listCryptoCurrencies(): Promise<CryptoCurrency[]> {
     const enabled = new Set(
       (merchant.selectedCurrencies ?? []).map((c) => c.toLowerCase())
     );
-
-    const data: CryptoCurrency[] = [];
+    const byCode = new Map<string, CryptoCurrency>();
     for (const coin of full.currencies ?? []) {
       const code = coin.code?.toLowerCase();
       if (!code || !enabled.has(code)) continue;
       if (coin.enable === false || coin.available_for_payment === false) continue;
-      data.push({
+      byCode.set(code, {
         code,
         name: coin.name?.trim() || code.toUpperCase(),
         network: coin.network?.trim() || null,
@@ -127,9 +141,12 @@ export async function listCryptoCurrencies(): Promise<CryptoCurrency[]> {
         popular: Boolean(coin.is_popular) || PINNED_POPULAR.has(code),
       });
     }
-    data.sort(
-      (a, b) => Number(b.popular) - Number(a.popular) || a.name.localeCompare(b.name)
-    );
+
+    const data: CryptoCurrency[] = [];
+    for (const code of ALLOWED_CRYPTO_CURRENCIES) {
+      const coin = byCode.get(code);
+      if (coin) data.push(coin);
+    }
 
     currencyCache = { at: Date.now(), data };
     return data;

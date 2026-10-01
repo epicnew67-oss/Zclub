@@ -93,7 +93,8 @@ export async function getPaymentRates(): Promise<PaymentRates> {
 
 /**
  * Live PKR→USD rate with the settings value as fallback. The caller locks
- * whatever this returns into payments.rate_lock.
+ * whatever this returns into payments.rate_lock. Cached for 10 minutes so
+ * page renders don't wait on the external rate API.
  */
 export async function fetchUsdPerPkr(): Promise<{
   rate: number;
@@ -101,7 +102,7 @@ export async function fetchUsdPerPkr(): Promise<{
 }> {
   try {
     const response = await fetch("https://open.er-api.com/v6/latest/PKR", {
-      cache: "no-store",
+      next: { revalidate: 600 },
       signal: AbortSignal.timeout(5000),
     });
     if (response.ok) {

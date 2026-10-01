@@ -79,16 +79,28 @@ export function Navbar({
         </Link>
 
         <nav className="ml-4 hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
-          <Link href="/browse" className="transition-colors hover:text-gold">
+          <Link
+            href="/browse"
+            prefetch
+            className="transition-colors hover:text-gold"
+          >
             Browse
           </Link>
           {user ? (
-            <Link href="/wallet" className="transition-colors hover:text-gold">
+            <Link
+              href="/wallet"
+              prefetch
+              className="transition-colors hover:text-gold"
+            >
               Wallet
             </Link>
           ) : null}
           {isSeller ? (
-            <Link href="/seller" className="transition-colors hover:text-gold">
+            <Link
+              href="/seller"
+              prefetch
+              className="transition-colors hover:text-gold"
+            >
               Seller studio
             </Link>
           ) : null}
@@ -100,6 +112,7 @@ export function Navbar({
           {isStaff ? (
             <Link
               href="/admin"
+              prefetch
               className="inline-flex items-center gap-1.5 text-gold transition-colors hover:text-gold-soft"
             >
               <ShieldCheckIcon className="size-4" />

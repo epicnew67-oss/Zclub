@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -145,6 +145,18 @@ export function TopupFlow({
   const [coinInfo, setCoinInfo] = useState<{ minUsd: number | null; packUsd: number | null } | null>(null);
   const [coinInfoLoading, setCoinInfoLoading] = useState(false);
   const [creatingPayment, setCreatingPayment] = useState(false);
+  const coinPanelRef = useRef<HTMLDivElement | null>(null);
+
+  // Bring the pay CTA into view when a coin is picked (matters on mobile,
+  // where the list is long and the button sits below the fold).
+  useEffect(() => {
+    if (!selectedCoin) return;
+    const timer = setTimeout(() => {
+      coinPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCoin?.code]);
 
   const selectedPack = useMemo(
     () => packs.find((p) => p.id === packId) ?? null,
@@ -509,7 +521,10 @@ export function TopupFlow({
           )}
 
           {selectedCoin ? (
-            <div className="space-y-3 rounded-xl border border-gold/30 bg-gradient-to-b from-gold/[0.07] to-transparent p-4">
+            <div
+              ref={coinPanelRef}
+              className="space-y-3 rounded-xl border border-gold/30 bg-gradient-to-b from-gold/[0.07] to-transparent p-4"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="text-muted-foreground">
                   Paying with{" "}
