@@ -7,7 +7,22 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: crypto invoices (any coin) + top-up status fix (this phase)
+## Phase: crypto open to every pack (this phase)
+
+User: "the top up for crypto should be there for all token packages — it's
+locked only for 10,000 tokens."
+
+- Verified the NOWPayments **invoice** API accepts every pack amount
+  ($0.90 → $18 all returned 200 + invoice_url) — there is no
+  invoice-level minimum; per-coin minimums are enforced by the hosted
+  checkout. The only lock was our own pre-check guard
+  (`settings.payment_rates.crypto_min_usd`, was 3).
+- Set `crypto_min_usd = 0` on cloud **and** local (admin-editable in
+  Settings) — crypto is now offered for all five packs. No code change or
+  deploy needed; the guard stays as an optional knob (raise it to steer
+  small packs to JazzCash/Easypaisa again).
+
+## Phase: crypto invoices (any coin) + top-up status fix
 
 User: "Top-up not found … i should be able to pay in any coin."
 
