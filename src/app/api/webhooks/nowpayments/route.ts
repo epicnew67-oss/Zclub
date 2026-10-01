@@ -127,5 +127,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Internal error" }, { status: 500 });
   }
 
+  // Display-only: keep the in-app checkout panel's status label in sync.
+  try {
+    await admin
+      .from("payments")
+      .update({ pay_status: ipnStatus })
+      .eq("external_id", lookupId);
+  } catch {
+    // never fail the webhook for a cosmetic update
+  }
+
   return Response.json(data);
 }

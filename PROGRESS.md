@@ -7,7 +7,50 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: crypto open to every pack (this phase)
+## Phase: in-app crypto checkout (this phase)
+
+User: build the full in-app crypto checkout — coin selection, exact
+amount/address/QR, real statuses, live updates; "Payment confirming" must
+reflect the actual NOWPayments status.
+
+### Done
+
+- **Coin catalog from NOWPayments** (`listCryptoCurrencies`):
+  `/v1/merchant/coins` (coins enabled for our account) joined with
+  `/v1/full-currencies` metadata (name, network, logo, `is_popular`; plus
+  a pinned-popular set), cached 10 min per server instance. Nothing
+  hardcoded — 359 coins enabled today.
+- **Selector UI** (topup-flow step 3): search by coin/network, popular
+  first, logos + network badges, and a live per-coin network-minimum
+  check (`getCryptoCoinInfoAction` → `/v1/min-amount`) with an inline
+  warning + disabled CTA when the pack is below the chosen coin's
+  minimum. The client sends only the ticker; tokens/price always come
+  from the DB pack server-side.
+- **Payment creation** (`createNowPaymentsPayment`, POST /v1/payment):
+  server validates the ticker against the enabled list, derives amount,
+  stores payment_id (`external_id`), `pay_currency`, `pay_amount`,
+  `pay_address`, `pay_expires_at`, `pay_status`. Migration
+  `20261202000000` adds the three display columns (applied local + cloud).
+- **Payment screen** (topup-status): "Pay with LTC · LTC", exact amount +
+  copy, QR (qrcode.react — ivory/dark for scannability), deposit address +
+  copy, countdown from NOWPayments' `expiration_estimate_date`, and REAL
+  status copy (waiting → "Waiting for payment"; confirming → "Payment
+  detected — waiting for confirmations…"; confirmed/sending; finished;
+  partially_paid; failed; refunded; expired). "Open invoice" remains only
+  for legacy invoice rows.
+- **Live updates, two layers:** existing Supabase Realtime plus a
+  server-side sync every 9s (`syncCryptoTopupAction` → GET
+  /v1/payment/{id} → applied through the SAME idempotent
+  `nowpayments_webhook_apply` RPC as the IPN; the page also syncs on
+  load). The client never supplies status; credit-once, under/overpay
+  (fiat-aware) and IPN idempotency are untouched. The webhook now also
+  mirrors `pay_status` for the panel label.
+- New `scripts/verify-crypto-flow.mjs` (15 checks): panel render
+  (address/amount/QR/copy/real status), direct IPN credit-once + replay
+  no-op + pay_status mirror, legacy invoice IPN still credits — all pass
+  locally; all 8 suites green.
+
+## Phase: crypto open to every pack
 
 User: "the top up for crypto should be there for all token packages — it's
 locked only for 10,000 tokens."

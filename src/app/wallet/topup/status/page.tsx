@@ -5,6 +5,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import {
   getTopupForUser,
   sanitizeReturnUrl,
+  syncCryptoPaymentForTopup,
 } from "@/lib/topups/server";
 import { TopupStatus } from "@/components/topup/topup-status";
 
@@ -40,7 +41,14 @@ export default async function TopupStatusPage({
     );
   }
 
-  const data = await getTopupForUser(user.id, topupId);
+  let data = await getTopupForUser(user.id, topupId);
+  if (data?.topup.method === "crypto" && data.payment?.pay_address) {
+    // Self-heal on load: pull the live NOWPayments status — applied
+    // through the same idempotent, server-verified credit path as the
+    // IPN — before rendering, so the screen shows the true status.
+    await syncCryptoPaymentForTopup(topupId).catch(() => null);
+    data = (await getTopupForUser(user.id, topupId)) ?? data;
+  }
   if (!data) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-10 md:px-6 md:py-16">

@@ -8,8 +8,11 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { alertNewTopup } from "@/lib/admin-alerts";
 import {
-  createNowPaymentsInvoice,
+  createNowPaymentsPayment,
+  fetchNowPaymentsMinUsd,
+  fetchNowPaymentsPaymentStatus,
   isNowPaymentsConfigured,
+  listCryptoCurrencies,
 } from "@/lib/nowpayments";
 import type {
   TopupMethod,
@@ -123,13 +126,14 @@ export async function createCryptoTopup(args: {
   userId: string;
   userEmail?: string;
   packId: string;
+  currency: string;
 }): Promise<{
   topupId: string;
-  invoiceUrl: string | null;
-  payAddress: string | null;
-  payAmount: number | null;
-  payCurrency: string | null;
-  priceUsd: number | null;
+  payAddress: string;
+  payAmount: number;
+  payCurrency: string;
+  payExpiresAt: string | null;
+  priceUsd: number;
 }> {
   if (!isNowPaymentsConfigured()) {
     throw new Error(
@@ -148,48 +152,69 @@ export async function createCryptoTopup(args: {
     throw new Error("Token pack not found.");
   }
 
+  // The client sends only a ticker choice — validate it against the
+  // coins this account currently has enabled, and derive everything
+  // else (tokens, fiat price) server-side.
+  const currency = args.currency.trim().toLowerCase();
+  const currencies = await listCryptoCurrencies();
+  const coin = currencies.find((c) => c.code === currency);
+  if (!coin) {
+    throw new Error(
+      "That coin isn't available right now — pick another one from the list."
+    );
+  }
+
   const { rate, source } = await fetchUsdPerPkr();
   const rates = await getPaymentRates();
   const priceUsd = Math.ceil(pack.price_pkr * rate * 100) / 100;
 
-  // The hosted checkout lets the buyer pick ANY enabled coin and enforces
-  // each coin's own network minimum; this guard just steers tiny packs to
-  // the manual methods up front. 0 disables it entirely.
+  // Optional fiat guard (admin-editable, 0 disables) — the real limit is
+  // the coin's own network minimum, checked live below.
   if (rates.crypto_min_usd > 0 && priceUsd < rates.crypto_min_usd) {
     throw new Error(
       `Crypto top-ups start at ~$${rates.crypto_min_usd.toFixed(2)}. This pack is $${priceUsd.toFixed(2)} — please pay with JazzCash or Easypaisa instead.`
     );
   }
 
+  const minUsd = await fetchNowPaymentsMinUsd(coin.code);
+  if (minUsd != null && priceUsd < minUsd) {
+    throw new Error(
+      `The network minimum for ${coin.name} is ~$${minUsd.toFixed(2)} — this pack is $${priceUsd.toFixed(2)}. Pick another coin or a bigger pack.`
+    );
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const invoice = await createNowPaymentsInvoice({
+  const payment = await createNowPaymentsPayment({
     priceUsd,
+    currency: coin.code,
     description: `${pack.tokens} tokens (${pack.label} pack)`,
     orderId: `pack-${pack.id}-${Date.now()}`,
     ipnCallbackUrl: `${siteUrl}/api/webhooks/nowpayments`,
   });
 
-  const { data: payment, error: paymentError } = await admin
+  const { data: paymentRow, error: paymentError } = await admin
     .from("payments")
     .insert({
       user_id: args.userId,
-      // Invoice id: IPNs reference it via `invoice_id` (the webhook
-      // matches on it before falling back to `payment_id`).
-      external_id: invoice.invoiceId,
+      // Direct payments: IPNs carry this payment_id; the webhook matches
+      // on it (falling back from invoice_id for legacy invoice rows).
+      external_id: payment.paymentId,
       token_pack_id: pack.id,
       status: "pending",
       price_pkr: pack.price_pkr,
       tokens: pack.tokens,
-      // Buyer chooses the coin on the hosted checkout — resolved by IPN.
-      pay_currency: null,
-      pay_amount: null,
+      pay_currency: payment.payCurrency,
+      pay_amount: payment.payAmount,
+      pay_address: payment.payAddress,
+      pay_expires_at: payment.payExpiresAt,
+      pay_status: payment.status,
       price_usd: priceUsd,
       rate_lock: {
         usd_per_pkr: rate,
         source,
         locked_at: new Date().toISOString(),
       },
-      invoice_url: invoice.invoiceUrl,
+      invoice_url: null,
     })
     .select("id")
     .single();
@@ -199,7 +224,7 @@ export async function createCryptoTopup(args: {
     .from("topup_requests")
     .insert({
       user_id: args.userId,
-      payment_id: payment.id,
+      payment_id: paymentRow.id,
       method: "crypto",
       token_pack_id: pack.id,
       tokens: pack.tokens,
@@ -222,12 +247,69 @@ export async function createCryptoTopup(args: {
 
   return {
     topupId: topup.id,
-    invoiceUrl: invoice.invoiceUrl,
-    payAddress: null,
-    payAmount: null,
-    payCurrency: null,
+    payAddress: payment.payAddress,
+    payAmount: payment.payAmount,
+    payCurrency: payment.payCurrency,
+    payExpiresAt: payment.payExpiresAt,
     priceUsd,
   };
+}
+
+/**
+ * Server-side status sync for an in-app crypto payment: fetch the live
+ * status from NOWPayments, apply it through the SAME idempotent DB
+ * function the IPN webhook uses, and refresh the display metadata.
+ * Never credits from the client — this runs server-to-server with the
+ * API key, and the DB function enforces credit-once/under/overpay rules.
+ */
+export async function syncCryptoPaymentForTopup(
+  topupId: string
+): Promise<{ status: string; payStatus: string } | null> {
+  const admin = createAdminClient();
+  const { data: topup } = await admin
+    .from("topup_requests")
+    .select("id, method, payment_id")
+    .eq("id", topupId)
+    .maybeSingle();
+  if (!topup || topup.method !== "crypto" || !topup.payment_id) return null;
+
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id, external_id, pay_address")
+    .eq("id", topup.payment_id)
+    .maybeSingle();
+  // Legacy invoice rows have no address yet — the IPN webhook handles
+  // them (looked up by invoice_id); nothing to poll by payment id.
+  if (!payment?.pay_address) return null;
+
+  const status = await fetchNowPaymentsPaymentStatus(payment.external_id);
+  if (!status || !status.status) return null;
+
+  const { error } = await admin.rpc("nowpayments_webhook_apply", {
+    _payment_id: payment.external_id,
+    _ipn_status: status.status,
+    _actually_paid: status.actuallyPaid,
+    _actually_paid_fiat: status.actuallyPaidFiat,
+  } as never);
+  if (error) throw error;
+
+  // Display metadata only (never money state).
+  await admin
+    .from("payments")
+    .update({
+      pay_status: status.status,
+      pay_address: payment.pay_address,
+      ...(status.expiresAt ? { pay_expires_at: status.expiresAt } : {}),
+    })
+    .eq("id", payment.id);
+
+  const { data: fresh } = await admin
+    .from("topup_requests")
+    .select("status")
+    .eq("id", topupId)
+    .maybeSingle();
+
+  return { status: fresh?.status ?? "pending", payStatus: status.status };
 }
 
 // ---------------------------------------------------------------- manual
@@ -377,7 +459,7 @@ export async function getTopupForUser(
     .from("topup_requests")
     .select(
       `id, method, tokens, status, reference_code, expires_at, transaction_id, review_note, created_at,
-       payments ( id, external_id, invoice_url, pay_amount, pay_currency, price_usd, price_pkr ),
+       payments ( id, external_id, invoice_url, pay_address, pay_amount, pay_currency, pay_expires_at, pay_status, price_usd, price_pkr ),
        token_packs ( label, price_pkr )`
     )
     .eq("id", topupId)

@@ -23,6 +23,46 @@ export type PaymentRates = {
 
 export const TOPUP_SCREENSHOT_BUCKET = "topup-screenshots";
 
+/** A coin enabled for our NOWPayments account (server-fetched, client-safe shape). */
+export type CryptoCurrency = {
+  code: string;
+  name: string;
+  network: string | null;
+  logoUrl: string | null;
+  popular: boolean;
+};
+
+// Network suffixes used by NOWPayments tickers (usdttrc20 → USDT TRC20).
+const NETWORK_SUFFIXES: Array<[RegExp, string]> = [
+  [/trc20$/, "TRC20"],
+  [/erc20$/, "ERC20"],
+  [/bsc$/, "BSC"],
+  [/sol$/, "SOL"],
+  [/base$/, "BASE"],
+  [/arb$/, "ARB"],
+  [/matic$/, "Polygon"],
+  [/op$/, "OP"],
+  [/avax$/, "AVAX"],
+  [/ton$/, "TON"],
+  [/apt$/, "APT"],
+  [/celo$/, "CELO"],
+];
+
+/** "usdttrc20" → { symbol: "USDT", network: "TRC20" }; "ltc" → { symbol: "LTC", network: null }. */
+export function formatCryptoCode(code: string | null | undefined): {
+  symbol: string;
+  network: string | null;
+} {
+  if (!code) return { symbol: "CRYPTO", network: null };
+  const lower = code.toLowerCase();
+  for (const [pattern, network] of NETWORK_SUFFIXES) {
+    if (pattern.test(lower)) {
+      return { symbol: lower.replace(pattern, "").toUpperCase(), network };
+    }
+  }
+  return { symbol: lower.toUpperCase(), network: null };
+}
+
 // Reused by finance queue + status pages on both server + client.
 export type TopupStatusData = {
   topup: {
@@ -40,8 +80,11 @@ export type TopupStatusData = {
     id: string;
     external_id: string;
     invoice_url: string | null;
+    pay_address: string | null;
     pay_amount: number | null;
     pay_currency: string | null;
+    pay_expires_at: string | null;
+    pay_status: string | null;
     price_usd: number | null;
     price_pkr: number;
   } | null;

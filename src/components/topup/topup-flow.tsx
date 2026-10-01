@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   BitcoinIcon,
+  CheckIcon,
   CopyIcon,
   Loader2Icon,
   QrCodeIcon,
+  SearchIcon,
   SmartphoneIcon,
   UploadIcon,
 } from "lucide-react";
@@ -26,14 +28,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { sanitizeReturnUrl, TOPUP_SCREENSHOT_BUCKET } from "@/lib/topups/types";
+import { sanitizeReturnUrl, TOPUP_SCREENSHOT_BUCKET, formatCryptoCode } from "@/lib/topups/types";
 import type {
+  CryptoCurrency,
   ManualAccount,
   TokenPack,
 } from "@/lib/topups/types";
 import {
   beginManualTopupAction,
   createCryptoTopupAction,
+  getCryptoCoinInfoAction,
+  listCryptoCurrenciesAction,
   submitManualTopupAction,
 } from "@/app/wallet/topup/actions";
 import type { TopupMethod } from "@/lib/topups/types";
@@ -114,17 +119,38 @@ export function TopupFlow({
   accounts,
 }: TopupFlowProps) {
   const router = useRouter();
-  const [phase, setPhase] = useState<"pack" | "method" | "manual">("pack");
+  const [phase, setPhase] = useState<"pack" | "method" | "crypto" | "manual">("pack");
   const [packId, setPackId] = useState<string | null>(preselectedPackId);
   const [method, setMethod] = useState<MethodChoice | null>(null);
   const [manual, setManual] = useState<ManualState | null>(null);
   const [busy, setBusy] = useState(false);
   const [pendingTransition, startTransition] = useTransition();
+  // Crypto checkout: the coin list is fetched from our server (which
+  // talks to NOWPayments — the browser never sees the API key).
+  const [currencies, setCurrencies] = useState<CryptoCurrency[] | null>(null);
+  const [coinQuery, setCoinQuery] = useState("");
+  const [selectedCoin, setSelectedCoin] = useState<CryptoCurrency | null>(null);
+  const [coinInfo, setCoinInfo] = useState<{ minUsd: number | null; packUsd: number | null } | null>(null);
+  const [coinInfoLoading, setCoinInfoLoading] = useState(false);
+  const [creatingPayment, setCreatingPayment] = useState(false);
 
   const selectedPack = useMemo(
     () => packs.find((p) => p.id === packId) ?? null,
     [packs, packId]
   );
+
+  const filteredCoins = useMemo(() => {
+    if (!currencies) return [];
+    const q = coinQuery.trim().toLowerCase();
+    if (!q) return currencies;
+    return currencies.filter(
+      (c) =>
+        c.code.includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        (c.network ?? "").toLowerCase().includes(q)
+    );
+  }, [currencies, coinQuery]);
+  const visibleCoins = filteredCoins.slice(0, 60);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -275,17 +301,20 @@ export function TopupFlow({
                 setBusy(true);
                 try {
                   if (method === "crypto") {
-                    const result = await createCryptoTopupAction(
-                      packId,
-                      returnUrl
-                    );
-                    if ("error" in result) {
-                      toast.error(result.error);
-                      setBusy(false);
-                    } else {
-                      router.push(
-                        `/wallet/topup/status?id=${result.topupId}&return=${encodeURIComponent(returnUrl)}`
-                      );
+                    // Not a payment yet — open the coin selector. The
+                    // payment is created only after a coin is chosen.
+                    setPhase("crypto");
+                    setBusy(false);
+                    if (!currencies) {
+                      startTransition(async () => {
+                        const res = await listCryptoCurrenciesAction();
+                        if ("error" in res) {
+                          toast.error(res.error);
+                          setPhase("method");
+                        } else {
+                          setCurrencies(res.currencies);
+                        }
+                      });
                     }
                   } else {
                     const result = await beginManualTopupAction(
@@ -339,6 +368,232 @@ export function TopupFlow({
           <p className="text-xs text-muted-foreground">
             Crypto is instant; JazzCash/Easypaisa go to finance for review and
             have a 30-minute payment window.
+          </p>
+        </section>
+      ) : null}
+
+      {/* 3. Crypto coin selector — coins come from NOWPayments via our
+          server (enabled for this account only); the payment is created
+          server-side for the chosen ticker. */}
+      {phase === "crypto" ? (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              Pay for{" "}
+              {selectedPack
+                ? `${selectedPack.tokens.toLocaleString("en-US")} tokens · ${formatPkr(selectedPack.price_pkr)}`
+                : "selected pack"}{" "}
+              with crypto
+            </h2>
+            <Button size="sm" variant="ghost" onClick={() => setPhase("method")}>
+              Change method
+            </Button>
+          </div>
+
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={coinQuery}
+              onChange={(e) => setCoinQuery(e.target.value)}
+              placeholder="Search coin or network — BTC, USDT, TRC20…"
+              className="pl-9"
+              aria-label="Search cryptocurrency"
+            />
+          </div>
+
+          {currencies === null ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-14 animate-pulse rounded-lg border border-border/70 bg-surface/40"
+                />
+              ))}
+            </div>
+          ) : filteredCoins.length === 0 ? (
+            <p className="rounded-lg border border-border/70 bg-surface/40 px-3 py-6 text-center text-sm text-muted-foreground">
+              No coins match “{coinQuery}”.
+            </p>
+          ) : (
+            <>
+              <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                {visibleCoins.map((coin) => {
+                  const isSelected = selectedCoin?.code === coin.code;
+                  return (
+                    <button
+                      key={coin.code}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCoin(coin);
+                        setCoinInfo(null);
+                        setCoinInfoLoading(true);
+                        startTransition(async () => {
+                          const info = await getCryptoCoinInfoAction(
+                            packId!,
+                            coin.code
+                          );
+                          if (!("error" in info)) setCoinInfo(info);
+                          setCoinInfoLoading(false);
+                        });
+                      }}
+                      className="text-left"
+                    >
+                      <Card
+                        variant={isSelected ? "gold" : "default"}
+                        className="transition-colors"
+                      >
+                        <CardContent className="flex items-center gap-3 py-3">
+                          {coin.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={coin.logoUrl}
+                              alt=""
+                              loading="lazy"
+                              className="size-7 shrink-0 rounded-full"
+                            />
+                          ) : (
+                            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gold/15 text-[10px] font-semibold text-gold">
+                              {formatCryptoCode(coin.code).symbol.slice(0, 3)}
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <span className="truncate text-sm font-medium">
+                                {coin.name}
+                              </span>
+                              {coin.popular ? (
+                                <Badge variant="gold-outline" className="shrink-0">
+                                  Popular
+                                </Badge>
+                              ) : null}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground uppercase">
+                              {formatCryptoCode(coin.code).symbol}
+                              {coin.network ? ` · ${coin.network}` : ""}
+                            </span>
+                          </span>
+                          {isSelected ? (
+                            <CheckIcon className="size-4 shrink-0 text-gold" />
+                          ) : null}
+                        </CardContent>
+                      </Card>
+                    </button>
+                  );
+                })}
+              </div>
+              {filteredCoins.length > visibleCoins.length ? (
+                <p className="text-xs text-muted-foreground">
+                  Showing {visibleCoins.length} of {filteredCoins.length} — keep
+                  typing to narrow it down.
+                </p>
+              ) : null}
+            </>
+          )}
+
+          {selectedCoin ? (
+            <div className="space-y-3 rounded-xl border border-gold/30 bg-gradient-to-b from-gold/[0.07] to-transparent p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  Paying with{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedCoin.name}
+                  </span>{" "}
+                  <span className="text-xs uppercase">
+                    ({formatCryptoCode(selectedCoin.code).symbol}
+                    {selectedCoin.network
+                      ? ` · ${selectedCoin.network}`
+                      : ""}
+                    )
+                  </span>
+                </span>
+                {coinInfoLoading ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2Icon className="size-3 animate-spin" />
+                    Checking network minimum…
+                  </span>
+                ) : coinInfo ? (
+                  coinInfo.minUsd != null ? (
+                    <span className="text-xs text-muted-foreground">
+                      Network minimum ~${coinInfo.minUsd.toFixed(2)}
+                    </span>
+                  ) : null
+                ) : null}
+              </div>
+
+              {coinInfo &&
+              coinInfo.minUsd != null &&
+              coinInfo.packUsd != null &&
+              coinInfo.packUsd < coinInfo.minUsd ? (
+                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  This pack (${coinInfo.packUsd.toFixed(2)}) is below{" "}
+                  {selectedCoin.name}&apos;s network minimum of ~$
+                  {coinInfo.minUsd.toFixed(2)} — choose another coin or a
+                  bigger pack.
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="lg"
+                  className="shadow-gold"
+                  disabled={
+                    creatingPayment ||
+                    (coinInfo != null &&
+                      coinInfo.minUsd != null &&
+                      coinInfo.packUsd != null &&
+                      coinInfo.packUsd < coinInfo.minUsd)
+                  }
+                  onClick={async () => {
+                    if (!packId || !selectedCoin) return;
+                    setCreatingPayment(true);
+                    try {
+                      const result = await createCryptoTopupAction(
+                        packId,
+                        selectedCoin.code,
+                        returnUrl
+                      );
+                      if ("error" in result) {
+                        toast.error(result.error);
+                        setCreatingPayment(false);
+                      } else {
+                        router.push(
+                          `/wallet/topup/status?id=${result.topupId}&return=${encodeURIComponent(returnUrl)}`
+                        );
+                      }
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error
+                          ? err.message
+                          : "Could not create the payment."
+                      );
+                      setCreatingPayment(false);
+                    }
+                  }}
+                >
+                  {creatingPayment ? (
+                    <>
+                      <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                      Creating payment…
+                    </>
+                  ) : (
+                    "Create crypto payment"
+                  )}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={() => setSelectedCoin(null)}
+                >
+                  Clear selection
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <p className="text-xs text-muted-foreground">
+            Coins are fetched live from NOWPayments and limited to what our
+            account supports. The exact amount, address and QR appear on the
+            next screen.
           </p>
         </section>
       ) : null}
