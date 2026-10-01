@@ -49,6 +49,36 @@ export function isNowPaymentsConfigured() {
 }
 
 /**
+ * Live minimum payable amount for a pay currency, in USD. NOWPayments'
+ * minimum varies by coin and account (USDT-TRC20 was ~$11.5 on the
+ * production account). Returns null when the lookup fails so callers
+ * can fall back to the settings threshold.
+ */
+export async function fetchCryptoMinUsd(currency: string): Promise<number | null> {
+  const apiKey = process.env.NOWPAYMENTS_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const response = await fetch(
+      `${nowPaymentsBaseUrl()}/v1/min-amount?currency_from=${encodeURIComponent(currency)}&fiat_equivalent=usd`,
+      {
+        headers: { "x-api-key": apiKey },
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      min_amount?: number;
+      fiat_equivalent?: number;
+    };
+    const usd = Number(data.fiat_equivalent ?? data.min_amount);
+    return Number.isFinite(usd) && usd > 0 ? usd : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Create a NOWPayments invoice. The price is locked at creation: the PKR→USD
  * rate used is recorded by the caller (payments.rate_lock) so the invoice
  * can never be re-derived from a drifting rate.

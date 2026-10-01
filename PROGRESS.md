@@ -17,10 +17,17 @@ fix this © 2026 StripClub · stripclubonline.com …"
 - **Crypto top-ups:** `lib/nowpayments.ts` sent `pay_currency: "usdt"` —
   NOWPayments rejects it with 400 "Pay currency USDT is not allowed"
   (tickers are network-specific). Verified against the live account:
-  `usdttrc20` **is** enabled (a $2 test only tripped their ~$2.01 network
-  minimum). The client now sends `usdttrc20`, overridable via
-  `NOWPAYMENTS_PAY_CURRENCY`; the stored `payments.pay_currency` and the
-  status page's fallback label follow it.
+  `usdttrc20` **is** enabled. The client now sends `usdttrc20`, overridable
+  via `NOWPAYMENTS_PAY_CURRENCY`; the stored `payments.pay_currency` and
+  the status page's fallback label follow it.
+- **Network minimum:** the live USDT-TRC20 minimum is **~$11.5** (tested:
+  $5 → `AMOUNT_MINIMAL_ERROR`; $18 → payment `5006321594` created with
+  address). `createCryptoTopup` now reads `/v1/min-amount` live (falls back
+  to `settings.payment_rates.crypto_min_usd`, set to 3.0) and rejects small
+  packs with "Crypto top-ups start at ~$X (network minimum) — please pay
+  with JazzCash or Easypaisa instead." Today only the 5000 PKR pack (~$18)
+  clears the minimum; enable a lower-minimum coin in the NOWPayments
+  dashboard (or set `NOWPAYMENTS_PAY_CURRENCY`) to widen crypto.
 - `settings.payment_rates.crypto_min_usd` 1.5 → **3.0** (live DB, still
   admin-editable) so packs below the network minimum get the friendly
   "pay with JazzCash / Easypaisa" message instead of the raw NOWPayments

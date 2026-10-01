@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { alertNewTopup } from "@/lib/admin-alerts";
 import {
   createNowPaymentsInvoice,
+  fetchCryptoMinUsd,
   isNowPaymentsConfigured,
 } from "@/lib/nowpayments";
 import type {
@@ -146,9 +147,16 @@ export async function createCryptoTopup(args: {
   const rates = await getPaymentRates();
   const priceUsd = Math.ceil(pack.price_pkr * rate * 100) / 100;
 
-  if (priceUsd < rates.crypto_min_usd) {
+  // NOWPayments enforces a per-coin network minimum (USDT-TRC20 was
+  // ~$11.5 on the production account). Use the live minimum when
+  // available, else the settings threshold, so small packs get a clear
+  // "use JazzCash/Easypaisa" message instead of a raw API error.
+  const payCurrency = process.env.NOWPAYMENTS_PAY_CURRENCY ?? "usdttrc20";
+  const liveMinUsd = await fetchCryptoMinUsd(payCurrency);
+  const minUsd = liveMinUsd ?? rates.crypto_min_usd;
+  if (priceUsd < minUsd) {
     throw new Error(
-      `This pack is below the crypto minimum (~$${rates.crypto_min_usd.toFixed(2)}). Please pay with JazzCash or Easypaisa instead.`
+      `Crypto top-ups start at ~$${minUsd.toFixed(2)} (network minimum). This pack is $${priceUsd.toFixed(2)} — please pay with JazzCash or Easypaisa instead.`
     );
   }
 
