@@ -1,26 +1,231 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * StripClub design system — Tailwind CSS v4.
+ *
+ * Single source of truth: src/lib/brand.ts. <BrandStyle /> in the root layout
+ * injects the values as runtime CSS variables on :root; the :root block below
+ * is a static fallback kept in sync with brand.ts. Change a color in
+ * brand.ts and the whole site updates.
+ */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono, ui-monospace, monospace);
+  --font-heading: var(--font-playfair);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* brand-native colors */
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-deep: var(--gold-deep);
+  --color-burgundy: var(--burgundy);
+  --color-burgundy-deep: var(--burgundy-deep);
+  --color-success: var(--success);
+  /* brand shadows */
+  --shadow-soft: var(--shadow-soft);
+  --shadow-gold: var(--shadow-gold);
+  --shadow-glow: var(--shadow-glow);
+  /* radius scale */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-meteor: meteor 5s linear infinite;
+  @keyframes meteor {
+  0% {
+    transform: rotate(var(--angle)) translateX(0);
+    opacity: 1;
+    }
+  70% {
+    opacity: 1;
+    }
+  100% {
+    transform: rotate(var(--angle)) translateX(-500px);
+    opacity: 0;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/*
+ * Static fallbacks — kept in sync with src/lib/brand.ts.
+ * Runtime values are injected by <BrandStyle /> (see src/app/layout.tsx).
+ */
+:root {
+  --background: #0a0506;
+  --foreground: #f3ece4;
+  --card: #14090c;
+  --card-foreground: #f3ece4;
+  --popover: #241218;
+  --popover-foreground: #f3ece4;
+  --primary: #6b0f16;
+  --primary-foreground: #f3ece4;
+  --secondary: #4a0a10;
+  --secondary-foreground: #f3ece4;
+  --muted: #1d0e12;
+  --muted-foreground: #a89a8c;
+  --accent: #241218;
+  --accent-foreground: #dfc6a4;
+  --destructive: #e5484d;
+  --border: #2b181e;
+  --input: #3a2128;
+  --ring: #c8a57a;
+  --radius: 0.75rem;
+  --gold: #c2a17b;
+  --gold-soft: #d8bda0;
+  --gold-deep: #876d52;
+  --burgundy: #660e12;
+  --burgundy-deep: #44070d;
+  --success: #5ba56b;
+  --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
+  --shadow-gold: 0 2px 18px rgba(194, 161, 123, 0.28);
+  --shadow-glow: 0 0 28px -6px rgba(102, 14, 18, 0.62),
+    0 0 70px -22px rgba(194, 161, 123, 0.18);
+  --chart-1: #c2a17b;
+  --chart-2: #660e12;
+  --chart-3: #d8bda0;
+  --chart-4: #a89a8c;
+  --chart-5: #4a0a10;
+  --sidebar: #14090c;
+  --sidebar-foreground: #f3ece4;
+  --sidebar-primary: #6b0f16;
+  --sidebar-primary-foreground: #f3ece4;
+  --sidebar-accent: #241218;
+  --sidebar-accent-foreground: #dfc6a4;
+  --sidebar-border: #2b181e;
+  --sidebar-ring: #c8a57a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+  }
+  ::selection {
+    background: var(--gold);
+    color: var(--primary-foreground);
+  }
+}
+
+/* Brand effects */
+
+@utility gold-border {
+  border: 1px solid color-mix(in oklab, var(--gold) 45%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold) 10%, transparent),
+    var(--shadow-gold);
+}
+
+@utility burgundy-glow {
+  box-shadow: 0 0 26px -6px color-mix(in oklab, var(--burgundy) 60%, transparent),
+    0 0 72px -24px color-mix(in oklab, var(--gold) 22%, transparent);
+}
+
+/* Image Swarm — hero visual ported from Nischint007/Image-Swarm.
+   Tiles carry real approved listing photos; the static CSS grid is the
+   no-JS / reduced-motion fallback. When GSAP runs, tiles switch to
+   absolute positioning and the scroll-scrubbed timeline takes over. */
+.swarm-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85vw;
+  height: 85vh;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1vw;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.swarm-tile {
+  position: relative;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--gold) 25%, transparent);
+  box-shadow: 0 18px 60px -30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+@media (max-width: 768px) {
+  .swarm-stage {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5vw;
+  }
+}
+
+@utility gold-hover-glow {
+  transition-property: box-shadow, border-color, transform;
+  transition-duration: 250ms;
+  transition-timing-function: ease-out;
+}
+
+@layer utilities {
+  .gold-hover-glow:hover {
+    box-shadow: var(--shadow-gold);
+  }
+}
+
+@layer components {
+  /* Marquee animation used by the editorial category strip below
+     the hero. Two copies of the children render side-by-side; the
+     parent translates from 0 to -50% so the second copy seamlessly
+     continues the first, producing a seamless infinite scroll. */
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  .animate-marquee {
+    animation: marquee var(--duration, 36s) linear infinite;
+  }
 }

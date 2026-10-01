@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="StripClub mark">
+  <!-- Maskable variant — V4 mark scaled into the 40px safe zone
+       (transform = translate(32,32) scale(0.78) translate(-29.25,-32))
+       so OS circular / squircle masks never crop the rim, the S
+       terminals, or the accent line. -->
+  <g transform="translate(32 32) scale(0.78) translate(-29.25 -32)">
+    <path d="M 49.4 27.3 A 18 18 0 1 0 49.4 36.7" stroke="#660e12" stroke-width="8" />
+    <path d="M 38.5 20.5 C 34 16.5 23.5 16.5 22.5 23.5 C 21.8 28.5 27 31.2 32 32.6 C 39 34.4 41 37.8 40 41.6 C 38.7 47.3 26.5 48.6 22.5 43.5" stroke="#c2a17b" stroke-width="7" />
+    <line x1="44" y1="24" x2="44" y2="40" stroke="#c2a17b" stroke-width="3.5" />
+  </g>
+</svg>
