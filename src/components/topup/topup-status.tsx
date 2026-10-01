@@ -181,18 +181,6 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
             </div>
           ) : null}
 
-          {payment?.pay_address ? (
-            <div className="space-y-1 text-sm">
-              <div className="text-xs tracking-wider text-muted-foreground uppercase">Pay to address</div>
-              <div className="break-all font-mono text-foreground">{payment.pay_address}</div>
-              {payment.pay_amount ? (
-                <div className="text-xs text-muted-foreground">
-                  Amount: {Number(payment.pay_amount).toString()} {payment.pay_currency ?? "crypto"} · PKR {payment.price_pkr.toLocaleString("en-US")}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
           {topup.status === "completed" ? (
             <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
               Credited {topup.tokens.toLocaleString("en-US")} tokens. Redirecting to your chosen page…

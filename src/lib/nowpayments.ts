@@ -32,16 +32,9 @@ export function sortedStringify(value: unknown): string {
     .join(",")}}`;
 }
 
-export type NowPaymentsInvoice = {
-  payment_id: string | number;
-  payment_status: string;
-  pay_address: string;
-  price_amount: number;
-  price_currency: string;
-  pay_currency: string;
-  pay_amount: number;
-  invoice_url: string;
-  [key: string]: unknown;
+export type NowPaymentsInvoiceResult = {
+  invoiceId: string;
+  invoiceUrl: string;
 };
 
 export function isNowPaymentsConfigured() {
@@ -49,52 +42,24 @@ export function isNowPaymentsConfigured() {
 }
 
 /**
- * Live minimum payable amount for a pay currency, in USD. NOWPayments'
- * minimum varies by coin and account (USDT-TRC20 was ~$11.5 on the
- * production account). Returns null when the lookup fails so callers
- * can fall back to the settings threshold.
- */
-export async function fetchCryptoMinUsd(currency: string): Promise<number | null> {
-  const apiKey = process.env.NOWPAYMENTS_API_KEY;
-  if (!apiKey) return null;
-  try {
-    const response = await fetch(
-      `${nowPaymentsBaseUrl()}/v1/min-amount?currency_from=${encodeURIComponent(currency)}&fiat_equivalent=usd`,
-      {
-        headers: { "x-api-key": apiKey },
-        cache: "no-store",
-        signal: AbortSignal.timeout(5000),
-      }
-    );
-    if (!response.ok) return null;
-    const data = (await response.json()) as {
-      min_amount?: number;
-      fiat_equivalent?: number;
-    };
-    const usd = Number(data.fiat_equivalent ?? data.min_amount);
-    return Number.isFinite(usd) && usd > 0 ? usd : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Create a NOWPayments invoice. The price is locked at creation: the PKR→USD
- * rate used is recorded by the caller (payments.rate_lock) so the invoice
- * can never be re-derived from a drifting rate.
+ * Create a NOWPayments hosted invoice (POST /v1/invoice). pay_currency is
+ * intentionally omitted so the customer picks ANY coin enabled on the
+ * account; per-coin network minimums are enforced on the checkout page.
+ * The invoice id is what IPNs reference (`invoice_id`), so it is stored
+ * as payments.external_id.
  */
 export async function createNowPaymentsInvoice(args: {
   priceUsd: number;
   description: string;
   orderId: string;
   ipnCallbackUrl?: string;
-}): Promise<NowPaymentsInvoice> {
+}): Promise<NowPaymentsInvoiceResult> {
   const apiKey = process.env.NOWPAYMENTS_API_KEY;
   if (!apiKey) {
     throw new Error("NOWPayments is not configured (NOWPAYMENTS_API_KEY).");
   }
 
-  const response = await fetch(`${nowPaymentsBaseUrl()}/v1/payment`, {
+  const response = await fetch(`${nowPaymentsBaseUrl()}/v1/invoice`, {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
@@ -103,11 +68,6 @@ export async function createNowPaymentsInvoice(args: {
     body: JSON.stringify({
       price_amount: Number(args.priceUsd.toFixed(2)),
       price_currency: "usd",
-      // NOWPayments rejects bare "usdt" ("Pay currency USDT is not
-      // allowed") — tickers are network-specific. usdttrc20 is enabled
-      // on the production account; override with NOWPAYMENTS_PAY_CURRENCY
-      // (e.g. usdterc20 / btcbsc) if the store's coins change.
-      pay_currency: process.env.NOWPAYMENTS_PAY_CURRENCY ?? "usdttrc20",
       order_id: args.orderId,
       order_description: args.description,
       ...(args.ipnCallbackUrl
@@ -118,14 +78,14 @@ export async function createNowPaymentsInvoice(args: {
   });
 
   const data = (await response.json().catch(() => null)) as
-    | (NowPaymentsInvoice & { message?: string })
+    | { id?: string | number; invoice_url?: string; message?: string }
     | null;
 
-  if (!response.ok || !data || !data.payment_id) {
+  if (!response.ok || !data?.id || !data.invoice_url) {
     throw new Error(
       data?.message ?? `NOWPayments invoice failed (HTTP ${response.status})`
     );
   }
 
-  return data;
+  return { invoiceId: String(data.id), invoiceUrl: data.invoice_url };
 }

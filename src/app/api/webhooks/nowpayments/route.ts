@@ -69,6 +69,16 @@ export async function POST(request: Request) {
         ? String(body.paymentId)
         : null;
 
+  // Invoice payments: the IPN carries the `invoice_id` our
+  // payments.external_id stores (payment_id only exists for API
+  // payments). Match on the invoice id first, then fall back.
+  const invoiceIdRaw = body.invoice_id ?? body.invoiceId ?? null;
+  const invoiceId =
+    invoiceIdRaw != null && String(invoiceIdRaw).trim() !== ""
+      ? String(invoiceIdRaw)
+      : null;
+  const lookupId = invoiceId ?? paymentId;
+
   const ipnStatus =
     body.payment_status != null
       ? String(body.payment_status)
@@ -76,8 +86,8 @@ export async function POST(request: Request) {
         ? String(body.status)
         : null;
 
-  if (!paymentId || !ipnStatus) {
-    return Response.json({ ok: true, ignored: "missing payment_id or payment_status" });
+  if (!lookupId || !ipnStatus) {
+    return Response.json({ ok: true, ignored: "missing payment id or payment_status" });
   }
 
   const actuallyPaidRaw =
@@ -90,11 +100,26 @@ export async function POST(request: Request) {
       ? String(actuallyPaidRaw)
       : null;
 
+  // Fiat value of what actually arrived — the overpaid check uses this
+  // for invoice payments (no coin locked at creation).
+  const actuallyPaidFiatRaw =
+    (body.actually_paid_at_fiat as unknown) ??
+    (body.actuallyPaidAtFiat as unknown) ??
+    null;
+  const actuallyPaidFiat =
+    actuallyPaidFiatRaw != null && String(actuallyPaidFiatRaw).trim() !== ""
+      ? Number(actuallyPaidFiatRaw)
+      : null;
+
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("nowpayments_webhook_apply", {
-    _payment_id: paymentId,
+    _payment_id: lookupId,
     _ipn_status: ipnStatus,
     _actually_paid: actuallyPaid != null ? Number(actuallyPaid) : null,
+    _actually_paid_fiat:
+      actuallyPaidFiat != null && Number.isFinite(actuallyPaidFiat)
+        ? actuallyPaidFiat
+        : null,
   } as never);
 
   if (error) {

@@ -9,7 +9,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { alertNewTopup } from "@/lib/admin-alerts";
 import {
   createNowPaymentsInvoice,
-  fetchCryptoMinUsd,
   isNowPaymentsConfigured,
 } from "@/lib/nowpayments";
 import type {
@@ -147,16 +146,12 @@ export async function createCryptoTopup(args: {
   const rates = await getPaymentRates();
   const priceUsd = Math.ceil(pack.price_pkr * rate * 100) / 100;
 
-  // NOWPayments enforces a per-coin network minimum (USDT-TRC20 was
-  // ~$11.5 on the production account). Use the live minimum when
-  // available, else the settings threshold, so small packs get a clear
-  // "use JazzCash/Easypaisa" message instead of a raw API error.
-  const payCurrency = process.env.NOWPAYMENTS_PAY_CURRENCY ?? "usdttrc20";
-  const liveMinUsd = await fetchCryptoMinUsd(payCurrency);
-  const minUsd = liveMinUsd ?? rates.crypto_min_usd;
-  if (priceUsd < minUsd) {
+  // The hosted checkout lets the buyer pick ANY enabled coin and enforces
+  // each coin's own network minimum; this guard just steers tiny packs to
+  // the manual methods up front.
+  if (priceUsd < rates.crypto_min_usd) {
     throw new Error(
-      `Crypto top-ups start at ~$${minUsd.toFixed(2)} (network minimum). This pack is $${priceUsd.toFixed(2)} — please pay with JazzCash or Easypaisa instead.`
+      `Crypto top-ups start at ~$${rates.crypto_min_usd.toFixed(2)}. This pack is $${priceUsd.toFixed(2)} — please pay with JazzCash or Easypaisa instead.`
     );
   }
 
@@ -172,20 +167,23 @@ export async function createCryptoTopup(args: {
     .from("payments")
     .insert({
       user_id: args.userId,
-      external_id: String(invoice.payment_id),
+      // Invoice id: IPNs reference it via `invoice_id` (the webhook
+      // matches on it before falling back to `payment_id`).
+      external_id: invoice.invoiceId,
       token_pack_id: pack.id,
       status: "pending",
       price_pkr: pack.price_pkr,
       tokens: pack.tokens,
-      pay_currency: invoice.pay_currency ?? "usdttrc20",
-      pay_amount: invoice.pay_amount ?? priceUsd,
+      // Buyer chooses the coin on the hosted checkout — resolved by IPN.
+      pay_currency: null,
+      pay_amount: null,
       price_usd: priceUsd,
       rate_lock: {
         usd_per_pkr: rate,
         source,
         locked_at: new Date().toISOString(),
       },
-      invoice_url: invoice.invoice_url ?? null,
+      invoice_url: invoice.invoiceUrl,
     })
     .select("id")
     .single();
@@ -218,10 +216,10 @@ export async function createCryptoTopup(args: {
 
   return {
     topupId: topup.id,
-    invoiceUrl: invoice.invoice_url ?? null,
-    payAddress: invoice.pay_address ?? null,
-    payAmount: invoice.pay_amount ?? null,
-    payCurrency: invoice.pay_currency ?? null,
+    invoiceUrl: invoice.invoiceUrl,
+    payAddress: null,
+    payAmount: null,
+    payCurrency: null,
     priceUsd,
   };
 }
@@ -373,7 +371,7 @@ export async function getTopupForUser(
     .from("topup_requests")
     .select(
       `id, method, tokens, status, reference_code, expires_at, transaction_id, review_note, created_at,
-       payments ( id, external_id, invoice_url, pay_address, pay_amount, pay_currency, price_usd, price_pkr ),
+       payments ( id, external_id, invoice_url, pay_amount, pay_currency, price_usd, price_pkr ),
        token_packs ( label, price_pkr )`
     )
     .eq("id", topupId)

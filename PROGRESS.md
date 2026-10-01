@@ -7,7 +7,38 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: crypto ticker + domain fixes (this phase)
+## Phase: crypto invoices (any coin) + top-up status fix (this phase)
+
+User: "Top-up not found … i should be able to pay in any coin."
+
+### Done
+
+- **Top-up status bug:** `getTopupForUser` selected a nonexistent
+  `payments.pay_address` column → PostgREST 42703 → **every**
+  `/wallet/topup/status` view said "Top-up not found" (manual and crypto).
+  Removed it from the select, the `TopupStatusData.payment` type, and the
+  status UI.
+- **Any coin:** crypto top-ups now create a NOWPayments hosted **invoice**
+  (`POST /v1/invoice`, `pay_currency` omitted) — the buyer picks any enabled
+  coin on the checkout page, which enforces each coin's own network
+  minimum. `payments.external_id` stores the **invoice id**; invoice IPNs
+  carry `invoice_id`, which the webhook now prefers for lookup (falls back
+  to `payment_id` for direct API payments). `pay_currency`/`pay_amount`
+  stay null until the IPN resolves them.
+- **Webhook fix (migration `20261201000000_nowpayments_invoice_webhook.sql`,
+  applied to cloud — 16/16):** invoice payments have `pay_amount = null`,
+  so `_actually_paid > pay_amount` evaluated to NULL and violated
+  `payments.needs_review not null` (23502) — every invoice IPN 500'd.
+  `nowpayments_webhook_apply` now takes `_actually_paid_fiat` and does
+  fiat-first overpaid detection (crypto comparison kept for direct
+  payments).
+- New `scripts/verify-crypto-invoice-flow.mjs` (9 checks): status page
+  renders the invoice link; a signed IPN with `invoice_id` credits exactly
+  once; replays are no-ops — all passing locally.
+- Note: pending top-ups `a0d72558` (buyer epicnew67, 10000 tokens) and
+  `fadc34fa` (admin, JazzCash test) now render in the status page.
+
+## Phase: crypto ticker + domain fixes
 
 User: "Pay currency USDT is not allowed when im topping up with crypto and
 fix this © 2026 StripClub · stripclubonline.com …"

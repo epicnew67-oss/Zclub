@@ -40,7 +40,6 @@ export type TopupStatusData = {
     id: string;
     external_id: string;
     invoice_url: string | null;
-    pay_address: string | null;
     pay_amount: number | null;
     pay_currency: string | null;
     price_usd: number | null;
