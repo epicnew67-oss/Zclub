@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { purchaseSlotAction } from "@/app/orders/actions";
 import type { BrowseListingDetail } from "@/lib/browse";
+import { upperMeridiem } from "@/lib/datetime-format";
 
 function formatLocalRange(startsIso: string, endsIso: string): string {
   const s = new Date(startsIso);
@@ -24,11 +25,15 @@ function formatLocalRange(startsIso: string, endsIso: string): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    hour12: true,
   };
-  return `${s.toLocaleString(undefined, opts)} – ${e.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  })}`;
+  return upperMeridiem(
+    `${s.toLocaleString(undefined, opts)} – ${e.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })}`
+  );
 }
 
 function InsufficientBalanceToast({

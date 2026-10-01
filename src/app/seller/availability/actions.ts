@@ -77,8 +77,19 @@ export async function removeSlotAction(
   const { error } = await supabase.rpc("remove_listing_slot", {
     _slot_id: slotId,
   } as never);
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Already gone (double-click, stale tab, already booked/removed
+    // elsewhere)? The desired end state is achieved — treat as success
+    // instead of surfacing a scary "not found" error.
+    if (error.message.toLowerCase().includes("not found")) {
+      revalidatePath("/seller/availability");
+      revalidatePath("/seller/listings");
+      return { ok: true, data: undefined };
+    }
+    return { ok: false, error: error.message };
+  }
 
   revalidatePath("/seller/availability");
+  revalidatePath("/seller/listings");
   return { ok: true, data: undefined };
 }

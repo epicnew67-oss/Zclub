@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { cn } from "cn";
 import type { BrowseSlot } from "@/lib/browse";
+import { upperMeridiem } from "@/lib/datetime-format";
 
 function formatLocalDay(iso: string): string {
   const d = new Date(iso);
@@ -15,7 +16,13 @@ function formatLocalDay(iso: string): string {
 }
 function formatLocalTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return upperMeridiem(
+    d.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  );
 }
 
 export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {

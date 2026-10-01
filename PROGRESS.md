@@ -7,7 +7,36 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: buy panel session fix (this phase)
+## Phase: availability calendar widget + slot removal + AM/PM (this phase)
+
+User: "i dont see any am or pm on the calendar, also the upcoming slots
+are not being deletted asap" + requested the watermelon calendar-widget.
+
+### Done
+
+- **Calendar widget**: `src/components/watermelon/calendar-widget.tsx`
+  copied from `registry.watermelon.sh/r/calendar-widget.json` (motion
+  dependency installed) with two minimal functional adaptations — the
+  date strip is generated from today using LOCAL date keys (the registry
+  hardcodes Sept 2024) and the selected day is reported via
+  `onDateSelect`. On `/seller/availability` it replaces the raw
+  `datetime-local` input: day strip + agenda panel showing the seller's
+  own slots (dots on days with slots), plus explicit **Hour / Minute /
+  AM-PM** controls and a "Local time: …" preview (uppercase AM/PM via
+  `upperMeridiem` — Node ICU renders lowercase "pm").
+- **Slot removal is instant + idempotent**: the manager hides the slot
+  optimistically the moment Remove is clicked (restores only on a real
+  failure), and `removeSlotAction` treats "Slot … not found" as success —
+  double-clicks / stale tabs no longer surface a scary error. Removal
+  propagates on the next render (verified).
+- AM/PM is now forced (`hour12: true` + uppercase) on the public slots
+  picker and the buy panel's selected-slot range too.
+- New `scripts/verify-availability-calendar.mjs` (local + live modes,
+  8 checks): widget renders, AM/PM controls + preview, slots appear as
+  event dots, removal clears the dot. All pass locally; all 8 suites
+  green.
+
+## Phase: buy panel session fix
 
 User: listing detail buy panel showed "Sign in to book" for a signed-in
 user (navbar showed the session).
