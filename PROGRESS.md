@@ -7,7 +7,102 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: real Image Swarm on the landing hero (this phase)
+## Phase: functionality audit, CSP/auth fixes, deploy prep + push (this phase)
+
+User: "Stop focusing only on visual redesign. I need STRIPCLUB to be a
+fully working application now." + "push here
+https://github.com/epicnew67-oss/S-Club".
+
+### Broken → fixed
+
+- **Auth blocked by CSP (the "Failed to fetch")** — the static CSP in
+  `next.config.ts` only allowed `https://*.supabase.co`, so the browser
+  refused to reach the local stack at `127.0.0.1:54321`. CSP is now
+  environment-aware:
+  - Dev: allows `http://127.0.0.1:54321` + `http://localhost:54321`
+    (and their `ws://` counterparts for Realtime), plus `'unsafe-eval'`
+    (React dev-mode requirement — fixes the eval() console error).
+  - Production: only the exact origin derived from
+    `NEXT_PUBLIC_SUPABASE_URL` (+ its `wss://` counterpart) — no
+    wildcards; `'unsafe-eval'` is never shipped. LiveKit origins derive
+    from `LIVEKIT_URL` (wildcard kept only as fallback for hosted
+    deploys). Verified against a real `next start` build.
+- **Unauthenticated users saw the app shell** — `MobileNav`
+  (Browse/Orders/Wallet/Design/You) rendered for guests on /auth pages.
+  Root layout now renders the bottom nav ONLY when a session exists.
+  Verified: no bottom-nav markup on /auth/sign-in while signed out; it
+  appears on the homepage when authenticated.
+- **"Design" dev placeholder in navigation** — removed from the bottom
+  nav, desktop navbar, navbar dropdown, and footer. The `/design` route
+  still exists for reference but is unlinked. (Dead `home-hero.tsx`,
+  which held another /design link, deleted.)
+- **SVG console error `width="auto"`** — the Logo wordmark SVG used an
+  invalid `width="auto"` attribute. Now computes explicit numeric
+  width/height from the viewBox aspect (e.g. `width="110" height="19"`).
+- **`getHomeStats` counted test fixtures → "651 verified sellers"** —
+  the counters now exclude `scripts/test-*.mjs` fixture patterns at the
+  SQL layer (sellers by display_name, listings by title); "live
+  categories" counts DISTINCT categories with a real approved listing;
+  escrow excludes holds whose booking belongs to a test listing. Running
+  the test suite can no longer inflate the homepage numbers.
+- **Generic auth errors** — new `src/lib/auth-errors.ts` maps network
+  failures ("Failed to fetch", NetworkError, load failed) to "Couldn't
+  reach the authentication service…" and is used by all four auth forms
+  (sign-in, sign-up, forgot, reset).
+- **Image Swarm is now data-driven** — `getSwarmImages()` returns signed
+  cover photos of approved listings (test fixtures filtered); the hero
+  renders those real photos as swarm tiles. With no approved photos, it
+  renders NO placeholder rectangles — just a subtle brand atmosphere —
+  and picks up real photos automatically as sellers publish.
+
+### Verified (all green)
+
+- `npm run build` — passes (TypeScript clean).
+- Auth E2E against the live local stack (`scripts/verify-auth-flow.mjs`,
+  13/13 PASS): signup reaches `/auth/v1/signup` (CORS header present),
+  user row created in Supabase, login blocked pre-confirmation,
+  Mailpit confirmation link followed, sign-in returns a real session with
+  refresh token, the @supabase/ssr session cookie authorizes `/account`
+  (refresh-persistence path), `/auth/sign-in` redirects authenticated
+  users to `/account`, the authenticated homepage shows the app shell,
+  sign-out invalidates the session server-side.
+- Route protection: `/account` → 307 to sign-in when unauthenticated.
+- Homepage: no `NaN`, no `width="auto"`, real counters, guest sees
+  "Join now"/"Sign in", no /design links.
+- `npm test` — all 8 suites pass: wallet, sellers, listings, bookings,
+  LiveKit, post-call money (escrow/disputes/payouts), admin panel,
+  notifications + PWA.
+- Production CSP verified on `next start`: no `unsafe-eval`, no dev
+  localhost allowances, only the configured Supabase origin + ws.
+- Console-error audit greps: no TODO/FIXME/mock/dummy/NaN-producing
+  code (remaining "NaN" matches are comments documenting the guard).
+
+### Deploy + push (this phase)
+
+- `DEPLOY.md` added: full Supabase Cloud setup (create project, link,
+  `db push` all 16 migrations, auth URL config, SMTP) + Vercel steps
+  (env var table, CSP rebuild note, post-deploy NOWPayments/LiveKit
+  config, smoke-test checklist).
+- Repo pushed to **https://github.com/epicnew67-oss/S-Club** (`main` →
+  commit 4a17927). The machine's system Git Credential Manager held
+  Nivedh555's cached token which 403'd on the org repo; authenticated
+  `gh` as `epicnew67-oss` (device flow) and set the repo-local
+  credential helper (`helper =` reset + `!gh auth git-credential`) so
+  pushes work without overrides.
+
+### Remaining known issues (not fixed — reported)
+
+- **Lint**: 25 pre-existing errors / 28 warnings remain, all from the
+  earlier phases' files (mostly `react/no-unescaped-entities`, a few
+  `react-hooks/set-state-in-effect` and refs-during-render warnings in
+  `use-gsap`/`use-notifications`/bell components). None are in files
+  touched this phase; none affect runtime behaviour. Tracked for a
+  cleanup pass.
+- Browser click-through (typing in the forms, refresh-persistence in a
+  real tab) was verified at the HTTP/cookie level, not by a scripted
+  browser session.
+
+## Phase: real Image Swarm on the landing hero (prior phase)
 
 User: "https://github.com/Nischint007/Image-Swarm i want this image swarm to
 exist and work, it must be fully functional on the landing page".
