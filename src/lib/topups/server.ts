@@ -413,7 +413,7 @@ export async function listFinanceQueue(): Promise<FinanceQueueItem[]> {
     .select(
       `id, created_at, method, tokens, expires_at, reference_code,
        transaction_id, sender_number, screenshot_path,
-       profiles ( email, display_name ),
+       profiles!topup_requests_user_id_fkey ( email, display_name ),
        token_packs ( price_pkr ),
        payments ( external_id, needs_review, flag_reason, actually_paid, pay_amount )`
     )

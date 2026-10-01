@@ -107,6 +107,20 @@ check("reports page renders 200", reports.status === 200, `status=${reports.stat
 check("reports dispute rate renders a percent", /\d+\.\d\d%/.test(reportsHtml));
 check("reports has no '—' placeholders", !reportsHtml.includes(">—<"));
 
+// Finance top-ups queue — the page behind "New top-up request" admin
+// notifications. Regression: an ambiguous profiles embed (PGRST201)
+// crashed this page after the shell streamed ("This page couldn't load").
+const queue = await fetch(`${site}/finance/topups`, { headers: { cookie } });
+const queueHtml = await queue.text();
+check("finance topups renders 200", queue.status === 200, `status=${queue.status}`);
+check(
+  "finance topups: queue or empty state rendered",
+  queueHtml.includes("credit once") || queueHtml.includes("All clear"),
+  "neither queue cards nor empty state found"
+);
+check("finance topups: no route error boundary", !queueHtml.includes("Something went"), "");
+check("finance topups: no Next error screen", !queueHtml.includes("couldn't load"));
+
 console.log(
   `\n${fails === 0 ? "ALL ADMIN DASHBOARD CHECKS PASSED" : `${fails} ADMIN DASHBOARD CHECK(S) FAILED`} (${mode})`
 );

@@ -15,8 +15,20 @@ both using admin accounts. Investigation: the URL renders 200 server-side,
 Vercel runtime logs show no 500s — the screen was Next's **version-skew** error:
 tabs open across one of the two deploys made client-side navigation fail.
 
+**Real root cause found while verifying:** the finance queue was throwing
+`PGRST201` — `topup_requests` has two FKs to `profiles` (`user_id` +
+`reviewed_by`), so `listFinanceQueue()`'s bare `profiles ( … )` embed is
+ambiguous. The page streams its shell (HTTP 200) and then dies — exactly the
+"This page couldn't load / A server error occurred" screen the user hit.
+Fixed with the FK hint `profiles!topup_requests_user_id_fkey`. Audited every
+table with duplicate FKs to one target (user_roles, topup_requests,
+seller_applications, bookings, disputes, payout_requests → profiles): bookings
+was already hinted, topup_requests was the only broken embed; the rest have no
+profile embeds in code.
+
 ### Done
 
+- `src/lib/topups/server.ts`: disambiguated the profiles embed (PGRST201 fix).
 - `next.config.ts`: `deploymentId: process.env.VERCEL_DEPLOYMENT_ID` — on a
   stale-build mismatch the client now hard-navigates (auto full reload)
   instead of showing "This page couldn't load". Matters because the site UI
@@ -26,6 +38,9 @@ tabs open across one of the two deploys made client-side navigation fail.
 - `finance/topup-queue.tsx`: the admin notification deep link
   (`/finance/topups?id=<topupId>`) now scrolls to that card and rings it gold
   for 5s (the `id` param was previously ignored by its only consumer).
+- `scripts/verify-admin-dashboard.mjs`: now also checks `/finance/topups`
+  renders the queue (cards or empty state) and never the error screens —
+  the regression that caused this incident.
 - Note: the reported top-up (`fadc34fa…`, 500 tokens, JazzCash, window
   expired 07:33 UTC) belongs to the **admin account itself** — a wallet-flow
   test — and is still `pending` in the finance queue.
