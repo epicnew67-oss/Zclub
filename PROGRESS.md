@@ -7,7 +7,30 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: admin top-up queue + crypto auto-credit (this phase)
+## Phase: crypto priced in USD at checkout (this phase)
+
+User: "For crypto payments, display the package's current USD equivalent
+instead of PKR … Do NOT hardcode $0.91 or any exchange rate."
+
+### Done
+
+- `/wallet/topup` resolves the live PKR→USD rate server-side
+  (`fetchUsdPerPkr` — the same source payment creation locks in) and
+  passes it to the flow. The method step and the coin selector headline
+  now read **"Pay for 500 tokens · $X.XX with crypto"** when crypto is
+  chosen; PKR still shows for JazzCash/Easypaisa and on pack cards.
+- Server creation is unchanged in behavior: `price_amount =
+  ceil(pkr × live rate × 100) / 100`, `price_currency: "usd"`; the UI
+  displays the identical formula, so the shown USD is what gets charged.
+- Minimum validation unchanged: per-coin live `min-amount` vs the current
+  USD amount, with creation disabled and a clear message when below.
+- The status/payment screen shows the USD price for crypto rows (from
+  `payments.price_usd`, stored at creation) instead of PKR.
+- Token packs, ledger logic, webhook handling, confirmation and
+  idempotency untouched. `verify-crypto-flow.mjs` now 23 checks — all
+  pass; all 8 suites green.
+
+## Phase: admin top-up queue + crypto auto-credit
 
 User: "the top up queue should be there in admin panel … i dont have to
 receive reject or approve for crypto payments, it should be auto credited,

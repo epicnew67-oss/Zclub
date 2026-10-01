@@ -139,6 +139,7 @@ check("A: not 'Top-up not found'", !html.includes("Top-up not found"));
 check("A: shows 'Pay with' block", html.includes("Pay with") && html.includes("LTC"));
 check("A: shows waiting status (not blanket 'confirming')", html.includes("Waiting for payment"));
 check("A: shows exact amount", html.includes("0.29839161"));
+check("A: shows USD price for crypto", html.includes("$18.00"));
 check("A: shows deposit address", html.includes(payAddress));
 check("A: QR code present", html.includes("Payment QR code"));
 check("A: copy address button", html.includes("Copy address"));

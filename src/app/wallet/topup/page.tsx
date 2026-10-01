@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { AuthCard } from "@/components/auth/auth-card";
 import {
+  fetchUsdPerPkr,
   getManualAccount,
   getTokenPacks,
   sanitizeReturnUrl,
@@ -45,7 +46,13 @@ export default async function TopupPage({
       : null;
   const returnUrl = sanitizeReturnUrl(params.return);
 
-  const packs = await getTokenPacks();
+  // Crypto is priced in USD: use the current live PKR→USD rate (same
+  // source the payment creation locks in — nothing hardcoded).
+  const [packs, rateInfo] = await Promise.all([
+    getTokenPacks(),
+    fetchUsdPerPkr(),
+  ]);
+  const usdPerPkr = rateInfo.rate;
 
   // Pre-select the cheapest pack that covers `needed` (tokens >= needed).
   let preselectedPackId: string | null = null;
@@ -93,6 +100,7 @@ export default async function TopupPage({
         neededTokens={needed}
         returnUrl={returnUrl}
         userId={user.id}
+        usdPerPkr={usdPerPkr}
         accounts={{
           jazzcash: accounts[0],
           easypaisa: accounts[1],

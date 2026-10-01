@@ -53,6 +53,8 @@ type TopupFlowProps = {
   neededTokens: number | null;
   returnUrl: string;
   userId: string;
+  /** Current live PKR→USD rate — crypto is quoted in USD, never hardcoded. */
+  usdPerPkr: number;
   accounts: { jazzcash: ManualAccount | null; easypaisa: ManualAccount | null };
 };
 
@@ -81,6 +83,15 @@ const METHOD_META: Record<
 
 function formatPkr(pkr: number) {
   return `PKR ${pkr.toLocaleString("en-US")}`;
+}
+
+/** Same conversion the server locks in at creation: ceil(pkr × rate × 100) / 100. */
+function packUsd(pricePkr: number, usdPerPkr: number) {
+  return Math.ceil(pricePkr * usdPerPkr * 100) / 100;
+}
+
+function formatUsd(usd: number) {
+  return `$${usd.toFixed(2)}`;
 }
 
 function PreselectedNotice({
@@ -116,6 +127,7 @@ export function TopupFlow({
   neededTokens,
   returnUrl,
   userId,
+  usdPerPkr,
   accounts,
 }: TopupFlowProps) {
   const router = useRouter();
@@ -255,7 +267,11 @@ export function TopupFlow({
             <h2 className="text-sm font-semibold text-muted-foreground">
               Pay for{" "}
               {selectedPack
-                ? `${selectedPack.tokens.toLocaleString("en-US")} tokens · ${formatPkr(selectedPack.price_pkr)}`
+                ? `${selectedPack.tokens.toLocaleString("en-US")} tokens · ${
+                    method === "crypto"
+                      ? formatUsd(packUsd(selectedPack.price_pkr, usdPerPkr))
+                      : formatPkr(selectedPack.price_pkr)
+                  }`
                 : "selected pack"}
             </h2>
             <Button
@@ -381,7 +397,9 @@ export function TopupFlow({
             <h2 className="text-sm font-semibold text-muted-foreground">
               Pay for{" "}
               {selectedPack
-                ? `${selectedPack.tokens.toLocaleString("en-US")} tokens · ${formatPkr(selectedPack.price_pkr)}`
+                ? `${selectedPack.tokens.toLocaleString("en-US")} tokens · ${formatUsd(
+                    packUsd(selectedPack.price_pkr, usdPerPkr)
+                  )}`
                 : "selected pack"}{" "}
               with crypto
             </h2>
@@ -592,8 +610,9 @@ export function TopupFlow({
 
           <p className="text-xs text-muted-foreground">
             Coins are fetched live from NOWPayments and limited to what our
-            account supports. The exact amount, address and QR appear on the
-            next screen.
+            account supports. The USD price is converted from PKR at
+            today&apos;s rate and locked when the payment is created. The exact
+            amount, address and QR appear on the next screen.
           </p>
         </section>
       ) : null}

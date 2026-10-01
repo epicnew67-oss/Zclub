@@ -229,7 +229,13 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
             <CardTitle>{title}</CardTitle>
           </div>
           <CardDescription className="flex flex-wrap items-center gap-2">
-            {pack ? `${pack.label} · PKR ${pack.price_pkr.toLocaleString("en-US")} → ${topup.tokens.toLocaleString("en-US")} tokens` : `${topup.tokens.toLocaleString("en-US")} tokens`}
+            {pack
+              ? `${pack.label} · ${
+                  isCrypto && payment?.price_usd != null
+                    ? `$${Number(payment.price_usd).toFixed(2)}`
+                    : `PKR ${pack.price_pkr.toLocaleString("en-US")}`
+                } → ${topup.tokens.toLocaleString("en-US")} tokens`
+              : `${topup.tokens.toLocaleString("en-US")} tokens`}
             <Badge variant={statusBadge.variant}>
               <StatusIcon data-icon="inline-start" />
               {statusBadge.label}
