@@ -4,16 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { VideoIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  CALL_GRACE_MINUTES,
+  CALL_OPENS_BEFORE_MINUTES,
+} from "@/lib/call-window";
 
 /**
  * "Join call" button — appears in the order chat. Enabled from 5 minutes
- * before slot.starts_at through slot.ends_at (the booking's call
- * window). Disabled otherwise with a tooltip explaining why.
+ * before slot.starts_at through slot.ends_at, plus a grace period
+ * (CALL_GRACE_MINUTES) so a slightly-late start still works. Disabled
+ * otherwise with a tooltip explaining why.
  *
  * Opens `/call/<id>` in a new tab so the chat stays open alongside the
  * call. The call page itself does the server-side auth + token mint
- * and redirects to an error message if the user is outside the window
- * server-side.
+ * against the same window.
  */
 export function JoinCallButton({
   bookingId,
@@ -37,9 +41,10 @@ export function JoinCallButton({
 
   const start = new Date(slotStartsAt).getTime();
   const end = new Date(slotEndsAt).getTime();
-  const opensAt = start - 5 * 60_000;
+  const opensAt = start - CALL_OPENS_BEFORE_MINUTES * 60_000;
+  const graceEnd = end + CALL_GRACE_MINUTES * 60_000;
   const finalized = status === "cancelled" || status === "seller_no_show" || status === "completed";
-  const canJoin = !finalized && now >= opensAt && now <= end;
+  const canJoin = !finalized && now >= opensAt && now <= graceEnd;
 
   let label = "Join call";
   let disabledReason: string | null = null;
@@ -49,8 +54,8 @@ export function JoinCallButton({
   } else if (now < opensAt) {
     const minutes = Math.max(1, Math.ceil((opensAt - now) / 60_000));
     label = `Opens in ${minutes} min`;
-    disabledReason = `The call opens 5 minutes before the scheduled start.`;
-  } else if (now > end) {
+    disabledReason = `The call opens ${CALL_OPENS_BEFORE_MINUTES} minutes before the scheduled start.`;
+  } else if (now > graceEnd) {
     label = "Call ended";
     disabledReason = "The scheduled call window has passed.";
   }

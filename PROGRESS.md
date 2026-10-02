@@ -7,7 +7,32 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: order pages 404 — listings.slug doesn't exist (this phase)
+## Phase: call grace window (this phase)
+
+User: "cant the seller start the call? it shows call ended near the chat."
+
+### Root cause
+
+The scheduled slot (10:30–11:00 AM their time) had just passed; the join
+window closed at the exact slot end, so the button flipped to "Call
+ended" and `mint_livekit_token` returned `too_late`. A start a few
+minutes late was impossible.
+
+### Done
+
+- **60-minute grace period** after the slot end, server + client:
+  `mint_livekit_token` (migration `20261205000000`) now allows starts
+  until `slot.ends_at + 60 min` (and returns that effective end so the
+  room/token TTL covers the late start); `JoinCallButton` mirrors it via
+  `src/lib/call-window.ts` (`CALL_OPENS_BEFORE_MINUTES`,
+  `CALL_GRACE_MINUTES` — keep in sync with the SQL). The call page's
+  `too_late` copy mentions the grace.
+- New `scripts/verify-call-grace.mjs` (5 checks, local+live): booking
+  ended 10 min ago → token minted + join button ready; ended 2 h ago →
+  `too_late` + button disabled + "Call ended". Both modes pass; all 8
+  suites green.
+
+## Phase: order pages 404 — listings.slug doesn't exist
 
 User booked a slot (tokens held ✓) but `/orders/<id>` showed the 404
 page.

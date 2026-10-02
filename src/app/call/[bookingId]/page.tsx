@@ -4,6 +4,10 @@ import { ArrowLeftIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { ensureCallRoom, livekitConfig, mintAccessToken } from "@/lib/livekit";
+import {
+  CALL_GRACE_MINUTES,
+  CALL_OPENS_BEFORE_MINUTES,
+} from "@/lib/call-window";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { CallRoom } from "./call-room";
@@ -100,9 +104,9 @@ export default async function CallPage({
               : "Call not available";
     const subtitle =
       code === "too_early" && typeof result.opens_at === "string"
-        ? `It opens at ${new Date(String(result.opens_at)).toLocaleString()} (5 minutes before the scheduled start).`
+        ? `It opens at ${new Date(String(result.opens_at)).toLocaleString()} (${CALL_OPENS_BEFORE_MINUTES} minutes before the scheduled start).`
         : code === "too_late"
-          ? "The booking's scheduled end time has passed."
+          ? `The scheduled call window has passed (a ${CALL_GRACE_MINUTES}-minute grace period is included).`
           : code === "wrong_state"
             ? `This booking is in status "${String(result.status ?? "")}". Calls are only available for paid / scheduled / live bookings.`
             : code === "not_participant"
