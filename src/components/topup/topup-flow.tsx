@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { toast } from "sonner";
 import {
   BitcoinIcon,
@@ -21,7 +24,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -46,6 +48,18 @@ import type { TopupMethod } from "@/lib/topups/types";
 // Re-exports for the server component (no circular import).
  
 export { sanitizeReturnUrl };
+
+gsap.registerPlugin(useGSAP, ScrollToPlugin);
+
+function scrollToStep(target: HTMLElement | null) {
+  if (!target) return;
+  const offset = 80;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    window.scrollTo({ top: window.scrollY + target.getBoundingClientRect().top - offset, behavior: "auto" });
+    return;
+  }
+  gsap.to(window, { scrollTo: { y: target, offsetY: offset }, duration: 0.55, ease: "power2.out", overwrite: "auto" });
+}
 
 type TopupFlowProps = {
   packs: TokenPack[];
@@ -144,19 +158,46 @@ export function TopupFlow({
   const [selectedCoin, setSelectedCoin] = useState<CryptoCurrency | null>(null);
   const [coinInfo, setCoinInfo] = useState<{ minUsd: number | null; packUsd: number | null } | null>(null);
   const [coinInfoLoading, setCoinInfoLoading] = useState(false);
+  const [coinInfoError, setCoinInfoError] = useState(false);
+  const coinRequestId = useRef(0);
   const [creatingPayment, setCreatingPayment] = useState(false);
+  const flowRef = useRef<HTMLDivElement | null>(null);
+  const packRef = useRef<HTMLElement | null>(null);
+  const packContinueRef = useRef<HTMLDivElement | null>(null);
+  const methodRef = useRef<HTMLElement | null>(null);
+  const methodContinueRef = useRef<HTMLDivElement | null>(null);
+  const cryptoRef = useRef<HTMLElement | null>(null);
+  const manualRef = useRef<HTMLDivElement | null>(null);
   const coinPanelRef = useRef<HTMLDivElement | null>(null);
+  const firstPhase = useRef(true);
+
+  const selectPack = (id: string) => {
+    setPackId(id);
+    coinRequestId.current += 1;
+    setSelectedCoin(null);
+    setCoinInfo(null);
+    setCoinInfoError(false);
+    setCoinInfoLoading(false);
+    scrollToStep(packContinueRef.current);
+  };
+  const selectMethod = (choice: MethodChoice) => {
+    setMethod(choice);
+    scrollToStep(methodContinueRef.current);
+  };
+
+  useGSAP(() => {
+    if (firstPhase.current) { firstPhase.current = false; return; }
+    const target = phase === "pack" ? packRef.current
+      : phase === "method" ? methodRef.current
+        : phase === "crypto" ? cryptoRef.current : manualRef.current;
+    scrollToStep(target);
+  }, { scope: flowRef, dependencies: [phase], revertOnUpdate: true });
 
   // Bring the pay CTA into view when a coin is picked (matters on mobile,
   // where the list is long and the button sits below the fold).
-  useEffect(() => {
-    if (!selectedCoin) return;
-    const timer = setTimeout(() => {
-      coinPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCoin?.code]);
+  useGSAP(() => {
+    if (selectedCoin) scrollToStep(coinPanelRef.current);
+  }, { scope: flowRef, dependencies: [selectedCoin?.code], revertOnUpdate: true });
 
   const selectedPack = useMemo(
     () => packs.find((p) => p.id === packId) ?? null,
@@ -182,12 +223,12 @@ export function TopupFlow({
   };
 
   return (
-    <div className="space-y-6">
+    <div ref={flowRef} className="space-y-6">
       <PreselectedNotice needed={neededTokens} preselected={preselectedPackId} />
 
       {/* 1. Pack cards — the only place tokens are chosen (fixed list, no free typing) */}
       {phase === "pack" ? (
-        <section className="space-y-3">
+        <section ref={packRef} className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">
             Choose a pack
           </h2>
@@ -202,7 +243,8 @@ export function TopupFlow({
                 <button
                   key={pack.id}
                   type="button"
-                  onClick={() => setPackId(pack.id)}
+                  data-pack-tokens={pack.tokens}
+                  onClick={() => selectPack(pack.id)}
                   className="text-left"
                 >
                   <Card
@@ -251,7 +293,7 @@ export function TopupFlow({
               );
             })}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div ref={packContinueRef} data-testid="pack-continue" className="flex flex-wrap items-center gap-3">
             <Button
               size="lg"
               className="shadow-gold"
@@ -274,7 +316,7 @@ export function TopupFlow({
 
       {/* 2. Method cards */}
       {phase === "method" ? (
-        <section className="space-y-3">
+        <section ref={methodRef} data-testid="payment-method-step" className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-muted-foreground">
               Pay for{" "}
@@ -299,7 +341,7 @@ export function TopupFlow({
               const meta = METHOD_META[key];
               const Icon = meta.icon;
               return (
-                <button key={key} type="button" onClick={() => setMethod(key)}>
+                <button key={key} type="button" onClick={() => selectMethod(key)}>
                   <Card
                     variant={method === key ? "gold" : "default"}
                     className="h-full text-left"
@@ -319,7 +361,7 @@ export function TopupFlow({
             })}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div ref={methodContinueRef} className="flex flex-wrap gap-2">
             <Button
               size="lg"
               className="shadow-gold"
@@ -404,7 +446,7 @@ export function TopupFlow({
           server (enabled for this account only); the payment is created
           server-side for the chosen ticker. */}
       {phase === "crypto" ? (
-        <section className="space-y-4">
+        <section ref={cryptoRef} className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-muted-foreground">
               Pay for{" "}
@@ -456,14 +498,27 @@ export function TopupFlow({
                       onClick={() => {
                         setSelectedCoin(coin);
                         setCoinInfo(null);
+                        setCoinInfoError(false);
                         setCoinInfoLoading(true);
+                        const requestId = ++coinRequestId.current;
                         startTransition(async () => {
-                          const info = await getCryptoCoinInfoAction(
-                            packId!,
-                            coin.code
-                          );
-                          if (!("error" in info)) setCoinInfo(info);
-                          setCoinInfoLoading(false);
+                          try {
+                            const info = await getCryptoCoinInfoAction(packId!, coin.code);
+                            if (requestId !== coinRequestId.current) return;
+                            if ("error" in info) {
+                              setCoinInfoError(true);
+                              toast.error(info.error);
+                            } else {
+                              setCoinInfo(info);
+                            }
+                          } catch {
+                            if (requestId === coinRequestId.current) {
+                              setCoinInfoError(true);
+                              toast.error("Could not check this coin's payment minimum.");
+                            }
+                          } finally {
+                            if (requestId === coinRequestId.current) setCoinInfoLoading(false);
+                          }
                         });
                       }}
                       className="text-left"
@@ -542,12 +597,12 @@ export function TopupFlow({
                 {coinInfoLoading ? (
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2Icon className="size-3 animate-spin" />
-                    Checking network minimum…
+                    Checking payment minimum…
                   </span>
                 ) : coinInfo ? (
                   coinInfo.minUsd != null ? (
                     <span className="text-xs text-muted-foreground">
-                      Network minimum ~${coinInfo.minUsd.toFixed(2)}
+                      Payment minimum ~${coinInfo.minUsd.toFixed(2)}
                     </span>
                   ) : null
                 ) : null}
@@ -559,10 +614,14 @@ export function TopupFlow({
               coinInfo.packUsd < coinInfo.minUsd ? (
                 <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   This pack (${coinInfo.packUsd.toFixed(2)}) is below{" "}
-                  {selectedCoin.name}&apos;s network minimum of ~$
+                  {selectedCoin.name}&apos;s current payment minimum of ~$
                   {coinInfo.minUsd.toFixed(2)} — choose another coin or a
                   bigger pack.
                 </p>
+              ) : null}
+
+              {coinInfoError ? (
+                <p className="text-xs text-destructive">Could not check this coin&apos;s minimum. Choose it again to retry.</p>
               ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
@@ -571,6 +630,9 @@ export function TopupFlow({
                   className="shadow-gold"
                   disabled={
                     creatingPayment ||
+                    coinInfoLoading ||
+                    coinInfoError ||
+                    coinInfo === null ||
                     (coinInfo != null &&
                       coinInfo.minUsd != null &&
                       coinInfo.packUsd != null &&
@@ -615,7 +677,13 @@ export function TopupFlow({
                 <Button
                   size="lg"
                   variant="ghost"
-                  onClick={() => setSelectedCoin(null)}
+                  onClick={() => {
+                    coinRequestId.current += 1;
+                    setSelectedCoin(null);
+                    setCoinInfo(null);
+                    setCoinInfoError(false);
+                    setCoinInfoLoading(false);
+                  }}
                 >
                   Clear selection
                 </Button>
@@ -633,6 +701,7 @@ export function TopupFlow({
       ) : null}
 
       {phase === "manual" && manual ? (
+        <div ref={manualRef}>
         <ManualSubmission
           topupId={manual.topupId}
           referenceCode={manual.referenceCode}
@@ -646,6 +715,7 @@ export function TopupFlow({
           onBack={() => setPhase("method")}
           copyToClipboard={copyToClipboard}
         />
+        </div>
       ) : null}
     </div>
   );
@@ -666,22 +736,19 @@ type ManualSubmissionProps = {
 };
 
 function Countdown({ expiresAt }: { expiresAt: string }) {
-  const [left, setLeft] = useState(() => {
-    const ms = new Date(expiresAt).getTime() - Date.now();
-    return Math.max(0, ms);
-  });
-  useState(() => {
-    const timer = setInterval(() => {
-      setLeft(Math.max(0, new Date(expiresAt).getTime() - Date.now()));
-    }, 1000);
+  const [left, setLeft] = useState<number | null>(null);
+  useEffect(() => {
+    const update = () => setLeft(Math.max(0, new Date(expiresAt).getTime() - Date.now()));
+    update();
+    const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  });
-  const mins = Math.floor(left / 60000);
-  const secs = Math.floor((left % 60000) / 1000);
-  const expired = left <= 0;
+  }, [expiresAt]);
+  const mins = Math.floor((left ?? 0) / 60000);
+  const secs = Math.floor(((left ?? 0) % 60000) / 1000);
+  const expired = left !== null && left <= 0;
   return (
     <span className={expired ? "text-destructive" : "text-gold"}>
-      {expired
+      {left === null ? "Checking time…" : expired
         ? "Window expired — start again"
         : `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")} left`}
     </span>

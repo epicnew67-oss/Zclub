@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDownIcon, ArrowUpIcon, CoinsIcon, Loader2Icon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { LocalDateTime } from "@/components/local-date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,56 +29,45 @@ export type LedgerRow = {
 const PAGE_SIZE = 15;
 
 const ENTRY_TYPE_LABELS: Record<string, { label: string; tone: "credit" | "debit" | "neutral" }> = {
-  topup: { label: "Top-up", tone: "credit" },
+  topup: { label: "Tokens added", tone: "credit" },
   bonus: { label: "Bonus", tone: "credit" },
-  support_adjustment: { label: "Support adjustment", tone: "credit" },
-  booking_hold: { label: "Hold", tone: "debit" },
-  booking_release: { label: "Released", tone: "credit" },
-  booking_refund: { label: "Refunded", tone: "credit" },
-  payout: { label: "Payout", tone: "debit" },
+  support_adjustment: { label: "Adjustment", tone: "credit" },
+  booking_hold: { label: "Call purchase", tone: "debit" },
+  booking_release: { label: "Call earnings", tone: "credit" },
+  booking_refund: { label: "Refund", tone: "credit" },
+  payout: { label: "Withdrawal", tone: "debit" },
 };
 
 const FILTERS = [
   { value: "all", label: "All" },
   { value: "topup", label: "Top-ups" },
-  { value: "booking_hold", label: "Holds" },
-  { value: "booking_release", label: "Released" },
+  { value: "booking_hold", label: "Purchases" },
+  { value: "booking_release", label: "Earnings", sellerOnly: true },
   { value: "booking_refund", label: "Refunds" },
-  { value: "payout", label: "Payouts" },
-  { value: "bonus", label: "Bonus" },
+  { value: "payout", label: "Withdrawals", sellerOnly: true },
+  { value: "bonus", label: "Bonuses" },
   { value: "support_adjustment", label: "Adjustments" },
 ];
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function statusFor(entry: LedgerRow) {
-  if (entry.amount > 0) return "Applied";
-  if (entry.amount < 0) return "Applied";
-  return "Applied";
-}
 
 export function LedgerHistory({
   walletId,
   initialRows,
   initialCount,
+  isSeller,
 }: {
   walletId: string;
   initialRows: LedgerRow[];
   initialCount: number;
+  isSeller: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const filter = searchParams.get("type") ?? "all";
+  const requestedFilter = searchParams.get("type") ?? "all";
+  const filter = FILTERS.some((f) => f.value === requestedFilter && (!f.sellerOnly || isSeller))
+    ? requestedFilter
+    : "all";
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
 
   const [rows, setRows] = useState<LedgerRow[]>(initialRows);
@@ -127,18 +117,20 @@ export function LedgerHistory({
         },
         (payload) => {
           const newRow = payload.new as LedgerRow;
-          setRows((prev) => {
-            if (prev.some((r) => r.id === newRow.id)) return prev;
-            return [newRow, ...prev];
-          });
+          if (filter !== "all" && newRow.entry_type !== filter) return;
           setTotal((n) => n + 1);
+          if (page === 1) {
+            setRows((prev) => prev.some((r) => r.id === newRow.id)
+              ? prev
+              : [newRow, ...prev].slice(0, PAGE_SIZE));
+          }
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [walletId]);
+  }, [walletId, filter, page]);
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
@@ -160,13 +152,13 @@ export function LedgerHistory({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Payment history</CardTitle>
+            <CardTitle>Token activity</CardTitle>
             <CardDescription>
-              See when tokens were added or used. Newest first.
+              Tokens added, spent, or returned. Newest first.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            {FILTERS.map((f) => {
+            {FILTERS.filter((f) => !f.sellerOnly || isSeller).map((f) => {
               const active = filter === f.value;
               return (
                 <Button
@@ -190,19 +182,36 @@ export function LedgerHistory({
             <CoinsIcon className="size-6 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
               {filter === "all"
-                ? "No payments or token activity yet."
+                ? "No token activity yet."
                 : `No entries match the "${FILTERS.find((f) => f.value === filter)?.label}" filter.`}
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border/70">
+          <>
+          <div className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border/70 md:hidden">
+            {rows.map((row) => {
+              const meta = ENTRY_TYPE_LABELS[row.entry_type] ?? { label: row.entry_type, tone: "neutral" as const };
+              const positive = row.amount > 0;
+              return (
+                <div key={row.id} className="flex items-center justify-between gap-3 px-3 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{meta.label}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground"><LocalDateTime value={row.created_at} /></p>
+                  </div>
+                  <span className={`shrink-0 font-semibold tabular-nums ${positive ? "text-success" : "text-destructive"}`}>
+                    {positive ? "+" : ""}{row.amount.toLocaleString("en-US")} <span className="text-xs font-normal">tokens</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-hidden rounded-lg border border-border/70 md:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs tracking-wider text-muted-foreground uppercase">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-medium">Date</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Type</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Amount</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Activity</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Tokens</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -215,7 +224,7 @@ export function LedgerHistory({
                   return (
                     <tr key={row.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 align-middle text-foreground">
-                        {formatDate(row.created_at)}
+                        <LocalDateTime value={row.created_at} />
                       </td>
                       <td className="px-4 py-3 align-middle">
                         <Badge
@@ -244,15 +253,13 @@ export function LedgerHistory({
                           tokens
                         </span>
                       </td>
-                      <td className="px-4 py-3 align-middle">
-                        <Badge variant="outline">{statusFor(row)}</Badge>
-                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {total > PAGE_SIZE ? (

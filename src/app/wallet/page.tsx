@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { AuthCard } from "@/components/auth/auth-card";
 import { LedgerHistory, type LedgerRow } from "@/components/wallet/ledger-history";
+import { TopupHistory, type TopupHistoryRow } from "@/components/wallet/topup-history";
 import { SellerWalletPanel } from "@/components/wallet/seller-wallet-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export default async function WalletPage({
     ledgerResult,
     hasSellerResult,
     payoutMinResult,
+    topupsResult,
   ] = await Promise.all([
     supabase.rpc("get_own_wallet_balance"),
     supabase.from("wallets").select("id").eq("user_id", user.id).maybeSingle(),
@@ -87,6 +89,12 @@ export default async function WalletPage({
       .select("value")
       .eq("key", "payout_min_tokens")
       .maybeSingle(),
+    supabase
+      .from("topup_requests")
+      .select("id, method, tokens, status, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
 
   const isSeller = hasSellerResult.data === true;
@@ -109,6 +117,7 @@ export default async function WalletPage({
   const walletId = walletResult.data?.id ?? null;
   const rows = (ledgerResult.data ?? []) as LedgerRow[];
   const total = ledgerResult.count ?? rows.length;
+  const topups = (topupsResult.data ?? []) as TopupHistoryRow[];
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-6 md:py-16">
@@ -141,7 +150,7 @@ export default async function WalletPage({
               <span className="text-lg text-muted-foreground">tokens</span>
             </div>
             <Separator />
-            <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+            <dl className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <dt className="text-xs tracking-wider text-muted-foreground uppercase">
                   PKR equivalent
@@ -155,14 +164,6 @@ export default async function WalletPage({
                   Rate
                 </dt>
                 <dd className="mt-1 font-medium tabular-nums">1 PKR = 2 tokens</dd>
-              </div>
-              <div>
-                <dt className="text-xs tracking-wider text-muted-foreground uppercase">
-                  Entries
-                </dt>
-                <dd className="mt-1 font-medium tabular-nums">
-                  {total.toLocaleString("en-US")}
-                </dd>
               </div>
             </dl>
             <div>
@@ -185,7 +186,7 @@ export default async function WalletPage({
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
               <span className="text-foreground">Every change is recorded.</span>{" "}
-              Your payment history stays visible.
+              Your token activity stays visible.
             </p>
             <p>
               <span className="text-foreground">Payments are counted once.</span>{" "}
@@ -207,16 +208,19 @@ export default async function WalletPage({
         />
       ) : null}
 
+      <TopupHistory rows={topups} />
+
       {walletId ? (
         <LedgerHistory
           walletId={walletId}
           initialRows={rows}
           initialCount={total}
+          isSeller={isSeller}
         />
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Payment history</CardTitle>
+            <CardTitle>Token activity</CardTitle>
             <CardDescription>
               Your wallet isn&apos;t initialized yet. Sign out and back in to
               provision it.

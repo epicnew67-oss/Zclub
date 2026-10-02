@@ -95,7 +95,7 @@ export async function listCryptoCurrenciesAction(): Promise<
 }
 
 /**
- * Guidance for the selector: the coin's live network minimum vs this
+ * Guidance for the selector: the provider's live payment minimum vs this
  * pack's USD price (both resolved server-side).
  */
 export async function getCryptoCoinInfoAction(

@@ -16,6 +16,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createHmac, randomUUID } from "node:crypto";
 import { spawnSync, spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -78,7 +79,7 @@ async function ensureDevServer() {
     if (response.status === 200) return null;
   } catch {}
   const child = spawn("C:\\WINDOWS\\System32\\cmd.exe", ["/c", "npm run dev"], {
-    cwd: new URL("..", import.meta.url).pathname.replace(/^\//, "").replace(/\//g, "\\"),
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
     detached: true,
     stdio: "ignore",
     env: process.env,

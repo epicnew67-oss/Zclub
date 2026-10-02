@@ -7,6 +7,14 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: top-up navigation and wallet history (2026-10-03)
+
+- Selecting a token pack scrolls to Continue; moving to payment method or crypto checkout scrolls to the new section. Selecting a coin brings its payment panel into view. GSAP scrolls respect reduced-motion settings.
+- The wallet now shows recent top-up payment statuses separately from token activity. Mobile token entries are readable cards; buyer filters omit seller earnings and withdrawals. The meaningless "Applied" column and misleading filtered entry count were removed. Dates use the saved account time zone without a server/client hydration mismatch.
+- Crypto coin selection waits for the provider minimum lookup before enabling checkout, handles lookup failure and stale responses, and uses accurate "payment minimum" wording. A new pack clears any old coin quote. The server still checks the live minimum and credits only after verified payment.
+- Fixed the top-up test runner's Windows working directory when the project path contains spaces. Local top-up backend tests, two focused phone browser tests, production build, and focused ESLint pass. A concurrent build and dev test briefly corrupted a generated `.next/dev` validator; removing that generated file and running the build alone resolved it.
+- JazzCash and Easypaisa auto-verification was deferred at the user's request. The 500-token crypto pack remains blocked under the current NOWPayments payout configuration, whose live minimums are around USD 11-14. The provider reports much lower minimums for some same-currency payout routes, but the merchant payout wallet must be changed in the NOWPayments account before the site can safely offer those small invoices. No balance is credited from an unverified payment or a typed transaction ID.
+
 ## Phase: seller availability, balance, and account photos (2026-10-02)
 
 - Fixed the seller dashboard wallet card reading the Supabase response object instead of its numeric `data`. It now matches the navbar and ledger.

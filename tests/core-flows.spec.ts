@@ -156,6 +156,29 @@ test("wallet explains withdrawal threshold without an impossible amount field", 
   await expect(page.locator("#payout-amount")).toHaveCount(0);
 });
 
+test("buyer wallet shows payment status and readable mobile token activity", async ({ page, context }) => {
+  await result(admin.from("topup_requests").insert({ user_id: buyer.user.id, method: "crypto", tokens: 500, status: "pending" }).select("id").single());
+  await authenticate(context, buyer);
+  await page.goto("/wallet");
+  await expect(page.getByText("Recent top-up payments", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /500 tokens.*Crypto.*Pending/i })).toBeVisible();
+  await expect(page.getByText("Token activity", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Withdrawals" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Earnings" })).toHaveCount(0);
+  await expect(page.getByText("Call purchase").first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("token checkout scrolls to the next step on a phone", async ({ page, context }) => {
+  await authenticate(context, buyer);
+  await page.goto("/wallet/topup");
+  await page.locator('[data-pack-tokens="500"]').click();
+  await expect.poll(() => page.getByTestId("pack-continue").evaluate((el) => el.getBoundingClientRect().top)).toBeLessThan(190);
+  await page.getByTestId("pack-continue").getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByTestId("payment-method-step")).toBeVisible();
+  await expect.poll(() => page.getByTestId("payment-method-step").evaluate((el) => el.getBoundingClientRect().top)).toBeLessThan(190);
+});
+
 test("seller dashboard shows wallet balance and buyers see an open seller online", async ({ page, context, browser }) => {
   await result(admin.rpc("wallet_credit", { _user_id: seller.user.id, _amount: 90, _entry_type: "support_adjustment", _ref_type: "test_fixture", _ref_id: randomUUID(), _description: "Dashboard balance regression", _created_by: null }));
   await authenticate(context, seller);

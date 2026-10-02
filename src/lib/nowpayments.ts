@@ -161,9 +161,9 @@ const minCache = new Map<string, { at: number; usd: number | null }>();
 const MIN_TTL_MS = 5 * 60 * 1000;
 
 /**
- * Live minimum payable amount for a coin, in USD (network minimums vary
- * per coin — USDT-TRC20 was ~$11.5, LTC much lower). Returns null when
- * the lookup fails.
+ * Live minimum payable amount for this merchant's current payout route,
+ * in USD. The provider can change it when a payout wallet or network
+ * changes. Returns null when the lookup fails.
  */
 export async function fetchNowPaymentsMinUsd(
   currency: string

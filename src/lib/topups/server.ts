@@ -171,17 +171,17 @@ export async function createCryptoTopup(args: {
   const priceUsd = Math.ceil(pack.price_pkr * rate * 100) / 100;
 
   // Optional fiat guard (admin-editable, 0 disables) — the real limit is
-  // the coin's own network minimum, checked live below.
+  // the provider's current minimum for this account, checked live below.
   if (rates.crypto_min_usd > 0 && priceUsd < rates.crypto_min_usd) {
     throw new Error(
-      `Crypto top-ups start at ~$${rates.crypto_min_usd.toFixed(2)}. This pack is $${priceUsd.toFixed(2)} — please pay with JazzCash or Easypaisa instead.`
+      `Crypto top-ups start at ~$${rates.crypto_min_usd.toFixed(2)}. This pack is $${priceUsd.toFixed(2)}. Choose a bigger pack or another payment method.`
     );
   }
 
   const minUsd = await fetchNowPaymentsMinUsd(coin.code);
   if (minUsd != null && priceUsd < minUsd) {
     throw new Error(
-      `The network minimum for ${coin.name} is ~$${minUsd.toFixed(2)} — this pack is $${priceUsd.toFixed(2)}. Pick another coin or a bigger pack.`
+      `The current payment minimum for ${coin.name} is ~$${minUsd.toFixed(2)}. This pack is $${priceUsd.toFixed(2)}. Pick another coin or a bigger pack.`
     );
   }
 
