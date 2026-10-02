@@ -7,6 +7,14 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: wallet clarity and payment security (2026-10-02)
+
+- Wallet text now uses plain English and reflects immediate settlement. A seller below the withdrawal threshold sees the balance and amount still needed, with no unusable `min 1,000, max 90` input.
+- Browser table writes are limited to profile timezone, notification read state, push subscriptions, and seller draft content/photos. Direct changes to bans, seller verification, approved listings, payments, ledger, and other money/moderation tables are revoked. Private settings and service helpers are no longer readable/callable from browser roles.
+- Withdrawal requests lock the seller wallet before checking available tokens so simultaneous requests cannot reserve the same balance twice. Manual top-up submission uses a conditional write so a late/racing request cannot overwrite an approved or expired top-up. Manual reference codes use cryptographic randomness.
+- Added hostile-client tests for forged credits, payments, top-ups, moderation and notification RPCs, private settings, and unchanged balance; added a parallel withdrawal test and a browser regression for the seller wallet threshold. Local build, full backend suite, top-up suite, 27 browser tests, and production dependency audit passed. ESLint has existing warnings only.
+- Production still requires a real payment-provider transaction and real-device media check. The security work reduces tested attack paths but is not a formal penetration test or a guarantee of no vulnerabilities.
+
 ## Phase: seller category picker contrast (2026-10-02)
 
 - Replaced the seller listing form's native category dropdown with an accessible Radix Select. The trigger and popover use the brand's dark surface, legible text, gold focus and selected states, and a short GSAP entrance that respects reduced-motion settings. The same picker serves new and edited listings.

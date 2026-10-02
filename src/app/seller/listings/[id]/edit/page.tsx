@@ -55,6 +55,13 @@ export default async function EditListingPage({
   if (!listing) {
     notFound();
   }
+  if (listing.status !== "draft" && listing.status !== "rejected") {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-16 text-sm text-muted-foreground">
+        This listing is already under review or live. Only drafts and rejected listings can be edited.
+      </div>
+    );
+  }
 
   const [categories, signedMap] = await Promise.all([
     getCategories(),

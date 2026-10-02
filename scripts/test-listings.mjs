@@ -657,6 +657,83 @@ const { error: foreignUploadErr } = await seller.client.storage
   });
 check("foreign-folder upload blocked", Boolean(foreignUploadErr));
 
+// ---------------------------------------------------------------- 12. hostile browser writes
+
+const { error: selfUnbanErr } = await seller.client.from("profiles")
+  .update({ is_banned: false }).eq("id", seller.user.userId);
+check("seller cannot change their own ban flag", Boolean(selfUnbanErr));
+const { error: selfVerifyErr } = await seller.client.from("seller_profiles")
+  .update({ is_verified: true }).eq("user_id", seller.user.userId);
+check("seller cannot verify their own profile", Boolean(selfVerifyErr));
+const { error: selfApproveErr } = await seller.client.from("listings")
+  .insert({ seller_id: seller.sellerProfileId, category_id: categoryId,
+    title: "Unreviewed listing", description: "Trying to bypass the review queue",
+    price_tokens: 1, duration_minutes: 30, status: "approved", is_active: true });
+check("browser cannot publish an unreviewed listing", Boolean(selfApproveErr));
+const { data: approvedProbe } = await admin.from("listings")
+  .insert({ seller_id: seller.sellerProfileId, category_id: categoryId,
+    title: "Approved security probe", description: "A live listing for permission testing",
+    price_tokens: 250, duration_minutes: 30, status: "approved", is_active: true })
+  .select("id").single();
+const { error: alterLiveErr } = await seller.client.from("listings")
+  .update({ price_tokens: 1 }).eq("id", approvedProbe.id);
+const { data: liveAfterAttempt } = await admin.from("listings")
+  .select("price_tokens").eq("id", approvedProbe.id).single();
+check("browser cannot change a live listing's price", Boolean(alterLiveErr) || liveAfterAttempt.price_tokens === 250);
+const { data: ownWallet } = await admin.from("wallets")
+  .select("id").eq("user_id", seller.user.userId).single();
+const { data: balanceBeforeAttack } = await admin.rpc("wallet_get_balance", {
+  _user_id: seller.user.userId,
+});
+const { error: forgedCreditErr } = await seller.client.from("ledger_entries")
+  .insert({ wallet_id: ownWallet.id, entry_type: "topup", amount: 100000,
+    ref_type: "payment", ref_id: randomUUID() });
+check("browser cannot insert a token credit", Boolean(forgedCreditErr));
+const { error: creditRpcErr } = await seller.client.rpc("wallet_credit", {
+  _user_id: seller.user.userId, _amount: 100000, _entry_type: "topup",
+  _ref_type: "payment", _ref_id: randomUUID(), _description: "forged", _created_by: null,
+});
+check("browser cannot call the wallet credit RPC", Boolean(creditRpcErr));
+const { error: forgedTopupErr } = await seller.client.from("topup_requests")
+  .insert({ user_id: seller.user.userId, method: "crypto", status: "approved", tokens: 100000 });
+check("browser cannot create an approved top-up", Boolean(forgedTopupErr));
+const { error: forgedPaymentErr } = await seller.client.from("payments")
+  .insert({ user_id: seller.user.userId, status: "finished", tokens: 100000, price_pkr: 1 });
+check("browser cannot forge a finished payment", Boolean(forgedPaymentErr));
+const { error: webhookRpcErr } = await seller.client.rpc("nowpayments_webhook_apply", {
+  _payment_id: randomUUID(), _payment_status: "finished", _pay_amount: 1,
+});
+check("browser cannot call the payment webhook RPC", Boolean(webhookRpcErr));
+const { error: adminAdjustErr } = await seller.client.rpc("admin_wallet_adjust", {
+  _user_id: seller.user.userId, _amount: 100000, _reason: "forged",
+});
+check("browser cannot use admin wallet adjustment", Boolean(adminAdjustErr));
+const { error: escrowRpcErr } = await seller.client.rpc("release_escrow", { _booking_id: randomUUID() });
+check("browser cannot call the escrow release RPC", Boolean(escrowRpcErr));
+const { error: summaryRpcErr } = await seller.client.rpc("get_seller_wallet_summary", { _user_id: support.userId });
+check("browser cannot read another user's wallet summary", Boolean(summaryRpcErr));
+const { error: notifyRpcErr } = await seller.client.rpc("notify_role", {
+  _roles: ["owner"], _type: "system", _title: "Forged alert", _body: "Pay me", _link: "/wallet",
+});
+check("browser cannot send trusted admin alerts", Boolean(notifyRpcErr));
+const { data: privateSettings } = await seller.client.from("settings")
+  .select("key").eq("key", "settlement_cutover");
+check("browser cannot read private settlement settings", privateSettings?.length === 0);
+const { data: balanceAfterAttack } = await admin.rpc("wallet_get_balance", {
+  _user_id: seller.user.userId,
+});
+check("hostile requests do not change token balance", balanceBeforeAttack === balanceAfterAttack);
+
+const { data: safeDraft, error: safeDraftErr } = await seller.client.from("listings")
+  .insert({ seller_id: seller.sellerProfileId, category_id: categoryId,
+    title: "Safe draft", description: "A normal seller draft for review",
+    price_tokens: 250, duration_minutes: 30, status: "draft", is_active: false })
+  .select("id").single();
+check("seller can still save a normal draft", !safeDraftErr && Boolean(safeDraft?.id), safeDraftErr?.message);
+const { error: safeEditErr } = await seller.client.from("listings")
+  .update({ title: "Safe draft edited" }).eq("id", safeDraft?.id);
+check("seller can still edit their draft", !safeEditErr, safeEditErr?.message);
+
 // ---------------------------------------------------------------- done
 
 console.log(

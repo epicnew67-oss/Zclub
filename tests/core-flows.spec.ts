@@ -136,6 +136,14 @@ test("seller category menu is readable and selection works", async ({ page }) =>
   await expect(category).toContainText(firstName);
 });
 
+test("wallet explains withdrawal threshold without an impossible amount field", async ({ page, context }) => {
+  await authenticate(context, seller);
+  await page.goto("/wallet");
+  await expect(page.getByRole("heading", { name: /Your balance/i })).toBeVisible();
+  await expect(page.getByText(/more to request a withdrawal/i)).toBeVisible();
+  await expect(page.locator("#payout-amount")).toHaveCount(0);
+});
+
 test("buyer can sign in, book an online seller and join without picking a time", async ({ page }) => {
   await result(admin.from("seller_profiles").update({ last_seen_at: new Date().toISOString() }).eq("user_id", seller.user.id).select("id").single());
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(`/listings/${slug}?slot=${slotId}`)}`);

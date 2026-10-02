@@ -58,6 +58,7 @@ function fmt(amount: number) {
 
 export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
   const router = useRouter();
+  const canRequestPayout = summary.available >= minTokens;
   const [amount, setAmount] = useState<string>("");
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -109,11 +110,11 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
       <header>
         <Badge variant="gold-outline">Seller wallet</Badge>
         <h2 className="mt-3 font-heading text-2xl font-semibold md:text-3xl">
-          Available · in escrow · pending
+          Your earnings and withdrawals
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Earnings land in your wallet after the 24-hour dispute window
-          closes (commission deducted). Until then they sit in escrow.
+          Your share is added to your wallet as soon as a completed call ends.
+          The 10% platform fee is taken first.
         </p>
       </header>
 
@@ -124,7 +125,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
               <CoinsIcon className="size-4 text-gold" /> Available
             </CardTitle>
             <CardDescription>
-              Tokens you can withdraw right now.
+              Your balance after pending withdrawals.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -140,10 +141,10 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <LockIcon className="size-4 text-gold" /> In escrow
+              <LockIcon className="size-4 text-gold" /> Held for calls
             </CardTitle>
             <CardDescription>
-              Held for bookings currently in flight.
+              Tokens held while calls are in progress.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -151,7 +152,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
               {fmt(summary.in_escrow)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Released after the dispute window closes (24h post-call).
+              Your share is added after a completed call.
             </p>
           </CardContent>
         </Card>
@@ -159,7 +160,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <HourglassIcon className="size-4 text-gold" /> Pending payout
+              <HourglassIcon className="size-4 text-gold" /> Withdrawals waiting
             </CardTitle>
             <CardDescription>
               Withdrawal requests awaiting finance.
@@ -183,12 +184,16 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
             <BanknoteIcon className="size-4 text-gold" /> Request a withdrawal
           </CardTitle>
           <CardDescription>
-            Minimum {minTokens.toLocaleString("en-US")} tokens. Finance
-            approves manually and marks the transfer paid with a reference.
+            Withdrawals start at {minTokens.toLocaleString("en-US")} tokens.
+            Our team reviews each request before sending payment.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form
+          {!canRequestPayout ? (
+            <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 text-sm text-foreground/85">
+              You have {fmt(summary.available)} tokens available. Earn {fmt(minTokens - summary.available)} more to request a withdrawal.
+            </p>
+          ) : <form
             onSubmit={handleRequest}
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
           >
@@ -205,7 +210,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
                 step={1}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={`min ${minTokens.toLocaleString("en-US")}, max ${summary.available.toLocaleString("en-US")}`}
+                placeholder={`Enter ${fmt(minTokens)} to ${fmt(summary.available)} tokens`}
                 disabled={pending}
               />
               {parsed > 0 && !aboveMin ? (
@@ -237,7 +242,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
               )}
               Request payout
             </Button>
-          </form>
+          </form>}
         </CardContent>
       </Card>
 
@@ -316,8 +321,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
       <Separator />
 
       <p className="text-xs text-muted-foreground">
-        Commissions come out of the seller&apos;s share at release time. The
-        ledger entries below show each transfer.
+        The 10% platform fee is taken from completed calls. Your payment history is below.
       </p>
     </div>
   );

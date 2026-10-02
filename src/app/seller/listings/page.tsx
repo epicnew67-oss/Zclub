@@ -140,9 +140,11 @@ export default async function SellerListingsPage() {
                     {listing.category ? <span>{listing.category.name}</span> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/seller/listings/${listing.id}/edit`}>Edit</Link>
-                    </Button>
+                    {listing.status === "draft" || listing.status === "rejected" ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/seller/listings/${listing.id}/edit`}>Edit</Link>
+                      </Button>
+                    ) : null}
                     {listing.status === "draft" || listing.status === "rejected" ? (
                       <SubmitListingButton
                         listingId={listing.id}

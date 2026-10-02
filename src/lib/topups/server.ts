@@ -5,6 +5,7 @@
  */
 
 import "server-only";
+import { randomInt } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { alertCryptoFlagged, alertNewTopup } from "@/lib/admin-alerts";
 import {
@@ -42,7 +43,7 @@ function referenceCode() {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let code = "SC-";
   for (let i = 0; i < 6; i += 1) {
-    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+    code += alphabet[randomInt(alphabet.length)];
   }
   return code;
 }
@@ -446,7 +447,7 @@ export async function submitManualTopup(args: {
     }
   }
 
-  const { error } = await admin
+  const { data: saved, error } = await admin
     .from("topup_requests")
     .update({
       transaction_id: transactionId,
@@ -454,7 +455,12 @@ export async function submitManualTopup(args: {
       screenshot_path: args.screenshotPath,
     })
     .eq("id", args.topupId)
-    .eq("user_id", args.userId);
+    .eq("user_id", args.userId)
+    .eq("status", "pending")
+    .is("transaction_id", null)
+    .gt("expires_at", new Date().toISOString())
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     if (error.message.includes("topup_requests_transaction_id_key")) {
@@ -464,6 +470,7 @@ export async function submitManualTopup(args: {
     }
     throw error;
   }
+  if (!saved) throw new Error("This top-up was already submitted or has expired. Start again.");
 }
 
 // ---------------------------------------------------------------- status

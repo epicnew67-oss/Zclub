@@ -118,9 +118,8 @@ export default async function WalletPage({
           Your <span className="text-gold">balance</span>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Every token in your wallet is the sum of an append-only ledger.
-          There is no stored balance — payments, holds, and releases all
-          land here as new rows.
+          Tokens from purchases, refunds, and completed calls appear here.
+          Your balance updates automatically.
         </p>
       </header>
 
@@ -131,7 +130,7 @@ export default async function WalletPage({
               <CoinsIcon className="size-5 text-gold" /> Current balance
             </CardTitle>
             <CardDescription>
-              Balance = sum of every entry on your ledger. Updates live.
+              Tokens you can use now.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -180,22 +179,21 @@ export default async function WalletPage({
               <ShieldCheckIcon className="size-5 text-gold" /> Safety
             </CardTitle>
             <CardDescription>
-              What protects your balance.
+              How we protect your tokens.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              <span className="text-foreground">Append-only ledger.</span>{" "}
-              No row is ever edited or deleted.
+              <span className="text-foreground">Every change is recorded.</span>{" "}
+              Your payment history stays visible.
             </p>
             <p>
-              <span className="text-foreground">Idempotent writes.</span>{" "}
-              Replaying the same payment / hold returns the original entry.
+              <span className="text-foreground">Payments are counted once.</span>{" "}
+              Repeated payment notices do not add tokens twice.
             </p>
             <p>
-              <span className="text-foreground">No overdraws.</span> The
-              wallet row is locked during debits — concurrent spends can&apos;t
-              dip below zero.
+              <span className="text-foreground">You cannot overspend.</span>{" "}
+              A purchase fails if you do not have enough tokens.
             </p>
           </CardContent>
         </Card>
@@ -218,7 +216,7 @@ export default async function WalletPage({
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Ledger history</CardTitle>
+            <CardTitle>Payment history</CardTitle>
             <CardDescription>
               Your wallet isn&apos;t initialized yet. Sign out and back in to
               provision it.

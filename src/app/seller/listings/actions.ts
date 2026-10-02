@@ -148,7 +148,7 @@ export async function updateListingDraftAction(
     return { ok: false, error: "Only approved sellers can edit listings." };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("listings")
     .update({
       title: input.title.trim(),
@@ -158,8 +158,12 @@ export async function updateListingDraftAction(
       price_tokens: input.priceTokens,
     })
     .eq("id", listingId)
-    .eq("seller_id", seller.id);
+    .eq("seller_id", seller.id)
+    .in("status", ["draft", "rejected"])
+    .select("id")
+    .maybeSingle();
   if (error) return { ok: false, error: error.message };
+  if (!updated) return { ok: false, error: "Only drafts and rejected listings can be edited." };
 
   revalidatePath(`/seller/listings/${listingId}/edit`);
   revalidatePath("/seller/listings");

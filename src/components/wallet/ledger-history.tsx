@@ -160,10 +160,9 @@ export function LedgerHistory({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Ledger history</CardTitle>
+            <CardTitle>Payment history</CardTitle>
             <CardDescription>
-              Every change to your balance, oldest to newest. Entries are
-              append-only — never edited, never deleted.
+              See when tokens were added or used. Newest first.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -191,7 +190,7 @@ export function LedgerHistory({
             <CoinsIcon className="size-6 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
               {filter === "all"
-                ? "No ledger entries yet. Top-ups and holds will land here."
+                ? "No payments or token activity yet."
                 : `No entries match the "${FILTERS.find((f) => f.value === filter)?.label}" filter.`}
             </p>
           </div>

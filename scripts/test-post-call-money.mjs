@@ -711,6 +711,25 @@ async function caseM_approvedPayoutReserved() {
   );
 }
 
+async function caseN_concurrentPayouts() {
+  console.log("\n== Case N: concurrent payout requests reserve once ==");
+  const seller = await makeApprovedSeller("pcm-test-seller");
+  await creditWallet(seller.userId, 1000);
+  const secondClient = await signInAs(seller.email, seller.password);
+  const [first, second] = await Promise.all([
+    seller.client.rpc("request_payout", { _amount: 1000 }),
+    secondClient.rpc("request_payout", { _amount: 1000 }),
+  ]);
+  check("N.1 one request succeeds", [first, second].filter((r) => r.data?.ok === true).length === 1,
+    JSON.stringify([first.data, second.data]));
+  check("N.2 other request lacks available tokens",
+    [first, second].some((r) => r.data?.code === "INSUFFICIENT_AVAILABLE"));
+  const { data: reserved } = await admin.from("payout_requests")
+    .select("tokens").eq("seller_id", seller.userId).eq("status", "pending");
+  check("N.3 total reserved does not exceed balance",
+    reserved?.reduce((sum, row) => sum + row.tokens, 0) === 1000);
+}
+
 // ---------------------------------------------------------------- helpers
 
 async function makeUserWithRole(role) {
@@ -736,6 +755,7 @@ async function main() {
     await caseK_payoutFullPath();
     await caseL_payoutReject();
     await caseM_approvedPayoutReserved();
+    await caseN_concurrentPayouts();
   } catch (error) {
     console.error("Test runner error:", error);
     process.exit(1);
