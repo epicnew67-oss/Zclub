@@ -235,6 +235,7 @@ export async function getHomeStats(): Promise<HomeStats> {
     .from("listings")
     .select("category_id")
     .eq("status", "approved")
+    .eq("is_active", true)
     .is("soft_deleted_at", null);
   for (const pattern of TEST_LISTING_TITLE_PATTERNS) {
     listingsQuery = listingsQuery.not("title", pattern.op, pattern.value);
@@ -326,6 +327,9 @@ async function fetchApprovedListings(
       { count: "exact" }
     )
     .eq("status", "approved")
+    .eq("is_active", true)
+    .eq("seller.is_active", true)
+    .is("seller.soft_deleted_at", null)
     .is("soft_deleted_at", null);
 
   // Hide test fixtures at the SQL layer. Each `not()` clause is
@@ -491,6 +495,7 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
     .select("id, title, description, price_tokens, duration_minutes, status, created_at, seller_id, category_id, soft_deleted_at")
     .eq("seller_id", sellerRow.id)
     .eq("status", "approved")
+    .eq("is_active", true)
     .is("soft_deleted_at", null);
 
   const matched = (candidates ?? []).find(

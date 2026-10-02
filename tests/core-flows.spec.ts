@@ -227,6 +227,20 @@ test("seller can cancel an unstarted call after the slot begins and buyer is ful
   expect(refunds?.reduce((sum, row) => sum + row.amount, 0)).toBe(200);
 });
 
+test("inactive listings are hidden from the public marketplace", async ({ page }) => {
+  await page.goto("/browse");
+  await expect(page.locator(`a[href="/listings/${slug}"]`)).toBeVisible();
+  const { error } = await admin.from("listings").update({ is_active: false }).eq("id", listingId);
+  if (error) throw error;
+  await page.goto("/browse");
+  await expect(page.locator(`a[href="/listings/${slug}"]`)).toHaveCount(0);
+  await page.goto("/");
+  await expect(page.locator(`a[href="/listings/${slug}"]`)).toHaveCount(0);
+  await page.goto(`/listings/${slug}`);
+  await expect(page).toHaveTitle(/Listing not found/);
+  await expect(page.getByRole("button", { name: /Buy|Book/ })).toHaveCount(0);
+});
+
 test.afterAll(async () => {
   // Preserve users, orders and ledger history; hide this test listing.
   if (listingId) await admin.from("listings").update({ is_active: false }).eq("id", listingId);

@@ -17,7 +17,8 @@ brand, accounts, listings and transaction history.
 
 - Homepage now leads with search, real creator listings and direct Browse,
   Buy tokens and Start selling paths. The Browse page has a clear empty state.
-  The legacy public test listing is excluded from marketplace results.
+  Inactive listings and the legacy public test listing are excluded from
+  marketplace results.
 - Buyer desktop navigation and footer expose My orders. Notification bell now
   shows an unread count only when unread items exist, and its panel displays
   the full title/body. Phone notification permissions require an explicit tap.
@@ -49,9 +50,9 @@ brand, accounts, listings and transaction history.
   cancellation with ledger refund, mobile chat layout, and **two LiveKit participants** with
   fake camera devices joining one room and recording completion.
 - Production currently has five active token packs, **zero open slots**, and
-  no real approved listing yet. Its only approved listing was a grace-window
-  test fixture, now excluded publicly. Sellers must publish real listings and
-  availability before buyers can book. Existing historical paid bookings are
+  no real active approved listing yet. Its only active approved listing was a
+  grace-window test fixture, now excluded publicly. Sellers must publish real
+  listings and availability before buyers can book. Existing historical paid bookings are
   left unchanged for review.
 - A funded production token payment and real human camera/audio quality still
   need live verification; local payment/provider tests and cloud connection
