@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Suspense } from "react";
+import Link from "next/link";
+import { ArrowRightIcon } from "lucide-react";
 import { ListingCard } from "@/components/browse/listing-card";
 import { BrowseToolbar } from "@/components/browse/browse-toolbar";
 import { BrowseSkeletonGrid } from "@/components/browse/browse-skeleton";
@@ -64,10 +66,10 @@ export default async function BrowsePage({
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 md:px-6 md:py-12">
       <header>
         <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-          <span className="text-gold">Browse</span>
+          <span className="text-gold">Browse calls</span>
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Sellers offering fixed-price 1:1 video calls. Filter, sort, and pick a slot.
+          Find a seller, compare calls, and reserve an available time with tokens.
         </p>
       </header>
 
@@ -89,8 +91,9 @@ export default async function BrowsePage({
               No listings found
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Try a different search term or clear the filters.
+              Try a different search or check back when sellers publish more calls.
             </p>
+            <Link href="/become-a-seller" className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-gold hover:underline">Become a seller <ArrowRightIcon className="size-4" /></Link>
           </div>
         ) : (
           <div

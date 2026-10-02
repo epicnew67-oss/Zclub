@@ -109,6 +109,74 @@ test("joining an active call opens exactly one tab", async ({ page, context }) =
   expect(pages).toHaveLength(1);
 });
 
+test("phone call chat opens as a bottom panel without replacing video or controls", async ({ page, context }) => {
+  await authenticate(context, buyer);
+  await context.grantPermissions(["camera", "microphone"]);
+  await page.goto(`/call/${callBookingId}`);
+  await page.getByTestId("pre-join").getByRole("button", { name: "Join call" }).click();
+  await expect(page.getByTestId("call-page")).toHaveAttribute("data-call-connected", "true", { timeout: 20_000 });
+  await expect.poll(async () => {
+    const { data } = await admin.from("bookings").select("buyer_joined_at").eq("id", callBookingId).single();
+    return data?.buyer_joined_at ?? null;
+  }, { timeout: 20_000 }).not.toBeNull();
+  const chatButton = page.getByRole("button", { name: "Open call chat" });
+  await expect(chatButton).toBeVisible();
+  await chatButton.click();
+  const panel = page.getByRole("dialog", { name: "Call chat" });
+  await expect(panel).toBeVisible();
+  await expect(page.getByTestId("call-video-stage")).toBeVisible();
+  const box = await panel.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y).toBeGreaterThan(200);
+  expect(box!.y + box!.height).toBeLessThan(844);
+  await page.getByRole("button", { name: "Close call chat", exact: true }).last().click();
+  await expect(panel).toHaveCount(0);
+});
+
+test("buyer and seller connect to the same call and completion is recorded", async ({ browser, page, context }) => {
+  await authenticate(context, buyer);
+  await context.grantPermissions(["camera", "microphone"]);
+  const sellerContext = await browser.newContext({ baseURL: "http://localhost:3000", permissions: ["camera", "microphone"], viewport: { width: 390, height: 844 } });
+  try {
+    await authenticate(sellerContext, seller);
+    const sellerPage = await sellerContext.newPage();
+    await page.goto(`/call/${callBookingId}`);
+    await sellerPage.goto(`/call/${callBookingId}`);
+    await page.getByTestId("pre-join").getByRole("button", { name: "Join call" }).click();
+    await sellerPage.getByTestId("pre-join").getByRole("button", { name: "Join call" }).click();
+    await expect(page.getByTestId("call-page")).toHaveAttribute("data-call-connected", "true", { timeout: 20_000 });
+    await expect(sellerPage.getByTestId("call-page")).toHaveAttribute("data-call-connected", "true", { timeout: 20_000 });
+    await expect.poll(async () => {
+      const { data } = await admin.from("bookings").select("buyer_joined_at,seller_joined_at,status").eq("id", callBookingId).single();
+      return Boolean(data?.buyer_joined_at && data?.seller_joined_at && data?.status === "live");
+    }, { timeout: 20_000 }).toBe(true);
+    await page.locator(".lk-disconnect-button").click();
+    await sellerPage.locator(".lk-disconnect-button").click();
+    await expect.poll(async () => {
+      const { data } = await admin.from("bookings").select("status").eq("id", callBookingId).single();
+      return data?.status;
+    }, { timeout: 20_000 }).toBe("completed");
+  } finally {
+    await sellerContext.close();
+  }
+});
+
+test("buyer desktop navigation exposes orders and notifications show their contents", async ({ page, context }) => {
+  await authenticate(context, buyer);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const note = await result(admin.from("notifications").insert({ user_id: buyer.user.id, type: "booking", title: "Call scheduled", body: "Your booked call is ready in My orders.", link: `/orders/${callBookingId}` }).select("id").single());
+  await page.goto("/orders");
+  await expect(page.locator("header nav").getByRole("link", { name: "My orders" })).toBeVisible();
+  const bell = page.getByRole("button", { name: /Notifications/ });
+  await expect(bell).toHaveAttribute("aria-label", /unread/);
+  await bell.click();
+  await expect(page.getByRole("dialog", { name: "Notifications" }).getByText("Your booked call is ready in My orders.")).toBeVisible();
+  await page.getByRole("button", { name: "Mark all read" }).click();
+  await expect(bell).toHaveAttribute("aria-label", "Notifications");
+  const { data } = await admin.from("notifications").select("read_at").eq("id", note.id).single();
+  expect(data?.read_at).toBeTruthy();
+});
+
 test("seller sees new chat messages and booking status without reloading", async ({ page, context }) => {
   await authenticate(context, seller);
   await page.goto(`/orders/${callBookingId}`);
@@ -137,6 +205,22 @@ test("long chats show the latest 500 messages when reopened", async ({ page, con
   await page.goto(`/orders/${callBookingId}`);
   await expect(page.getByText(`History ${stamp} 500`, { exact: true })).toBeVisible();
   await expect(page.getByText(`History ${stamp} 0`, { exact: true })).toHaveCount(0);
+});
+
+test("seller can cancel an unstarted call after the slot begins and buyer is fully refunded", async ({ page, context }) => {
+  const start = Date.now() + 60 * 60_000;
+  const slot = await result(admin.from("availability_slots").insert({ listing_id: listingId, starts_at: new Date(start).toISOString(), ends_at: new Date(start + 30 * 60_000).toISOString(), price_tokens: 200, status: "open" }).select("id").single());
+  const booking = await result(createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${buyer.access_token}` } } }).rpc("purchase_slot", { _slot_id: slot.id }));
+  await admin.from("availability_slots").update({ starts_at: new Date(Date.now() - 5 * 60_000).toISOString(), ends_at: new Date(Date.now() + 25 * 60_000).toISOString() }).eq("id", slot.id);
+  await authenticate(context, seller);
+  await page.goto(`/orders/${booking.booking_id}`);
+  await page.getByRole("button", { name: "Cancel booking" }).click();
+  await page.getByRole("button", { name: "Yes, cancel" }).click();
+  await expect(page.getByText("Cancelled", { exact: true })).toBeVisible();
+  const { data } = await admin.from("bookings").select("status").eq("id", booking.booking_id).single();
+  expect(data?.status).toBe("cancelled");
+  const { data: refunds } = await admin.from("ledger_entries").select("amount").eq("ref_id", booking.booking_id).eq("entry_type", "booking_refund");
+  expect(refunds?.reduce((sum, row) => sum + row.amount, 0)).toBe(200);
 });
 
 test.afterAll(async () => {

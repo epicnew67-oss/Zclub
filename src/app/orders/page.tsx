@@ -56,8 +56,7 @@ export default async function OrdersPage() {
             Your <span className="text-gold">orders</span>
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Every call you&apos;ve booked. Open one to chat with the seller or
-            cancel up to 24 hours before the start.
+            Every call you&apos;ve booked. Open one to chat, join your call, or manage a booking that has not started.
           </p>
         </div>
         <BalanceChip

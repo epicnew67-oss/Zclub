@@ -36,7 +36,7 @@ export type PurchaseResult =
 
 export type CancelResult =
   | { ok: true; role: "buyer" | "seller"; refundedBuyer: number; releasedSeller: number }
-  | { ok: false; code: "not_found" | "not_participant" | "already_finalized" | "too_late" };
+  | { ok: false; code: "not_found" | "not_participant" | "already_finalized" | "call_started" };
 
 export type NoShowResult =
   | { ok: true; noop?: boolean }
@@ -68,6 +68,7 @@ export type OrderDetail = {
   seller: { id: string; displayName: string; slug: string | null };
   chatId: string;
   role: "buyer" | "seller";
+  callStarted: boolean;
 };
 
 type PurchaseRpcRow = {
@@ -186,7 +187,7 @@ export async function cancelBooking(bookingId: string): Promise<CancelResult> {
   switch (row.code) {
     case "not_participant":
     case "already_finalized":
-    case "too_late":
+    case "call_started":
     case "not_found":
       return { ok: false, code: row.code };
     default:
@@ -375,6 +376,7 @@ export async function getOrderForUser(
     .from("bookings")
     .select(
       `id, buyer_id, seller_id, listing_id, slot_id, price_tokens, status, created_at,
+       buyer_joined_at, seller_joined_at, live_started_at,
        slot:availability_slots(starts_at, ends_at),
        listing:listings(id, title),
        buyer:profiles!bookings_buyer_id_fkey(id, display_name),
@@ -449,6 +451,7 @@ export async function getOrderForUser(
     },
     chatId: chat.id,
     role: booking.buyer_id === userId ? "buyer" : "seller",
+    callStarted: Boolean(booking.buyer_joined_at || booking.seller_joined_at || booking.live_started_at),
   };
 }
 

@@ -12,6 +12,7 @@ export default defineConfig({
     timezoneId: "America/Los_Angeles",
     locale: "en-US",
     viewport: { width: 390, height: 844 },
+    launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
     trace: "retain-on-failure",
   },
   webServer: {

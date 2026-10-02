@@ -5,6 +5,7 @@ import { CheckIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
 import { useNotifications, type NotificationRow } from "@/hooks/use-notifications";
+import { LocalDateTime } from "@/components/local-date-time";
 
 export function NotificationsList({ rows }: { rows: NotificationRow[] }) {
   const initialUnread = rows.filter((r) => !r.read_at).length;
@@ -12,7 +13,7 @@ export function NotificationsList({ rows }: { rows: NotificationRow[] }) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="rounded-lg border border-border/70 bg-surface/40">
+    <div className="overflow-hidden rounded-xl border border-gold/20 bg-surface/40">
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
         <div className="text-sm text-muted-foreground">
           {live.length} total · {unread} unread
@@ -42,18 +43,18 @@ export function NotificationsList({ rows }: { rows: NotificationRow[] }) {
         {live.map((r) => (
           <li
             key={r.id}
-            className={`flex flex-col gap-1 border-b border-border/30 px-4 py-4 last:border-0 ${
-              !r.read_at ? "bg-burgundy/5" : ""
+            className={`flex flex-col gap-2 border-b border-border/30 px-4 py-4 last:border-0 ${
+              !r.read_at ? "bg-gold/10" : ""
             }`}
           >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="flex min-w-0 items-start gap-2">
                 {!r.read_at ? <span className="h-2 w-2 rounded-full bg-gold" aria-hidden="true" /> : null}
-                <div className="text-sm font-medium">{r.title}</div>
+                <div className="min-w-0 text-sm font-semibold leading-snug text-foreground">{r.title}</div>
               </div>
-              <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground"><LocalDateTime value={r.created_at} /></div>
             </div>
-            {r.body ? <div className="text-sm text-muted-foreground">{r.body}</div> : null}
+            {r.body ? <div className="text-sm leading-relaxed text-foreground/75">{r.body}</div> : null}
             <div className="mt-1 flex items-center justify-between gap-3">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.type}</div>
               <div className="flex items-center gap-2">

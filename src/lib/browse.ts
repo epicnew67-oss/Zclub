@@ -47,6 +47,7 @@ const TEST_LISTING_TITLE_PATTERNS: Array<{ op: "ilike" | "eq"; value: string }> 
   { op: "eq", value: "Book chats" },
   { op: "eq", value: "Movie chats" },
   { op: "eq", value: "Travel chats" },
+  { op: "ilike", value: "Grace window check%" },
 ];
 
 function isTestSellerDisplayName(name: string | null | undefined): boolean {

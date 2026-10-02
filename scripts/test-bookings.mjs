@@ -20,8 +20,8 @@
  *      a no-op (idempotent).
  *   7. Chat messaging: buyer + seller send; non-participant blocked;
  *      rate-limit enforced; HTML sanitized server-side.
- *   8. Cancel too late: slot in the past → too_late. Second cancel on a
- *      finalized booking → already_finalized.
+ *   8. A missed unstarted call can be cancelled for a full refund.
+ *      Cancellation after a recorded join is rejected, and repeats are safe.
  *
  * Fixtures (booking-test-*@test.local, slots, bookings, chats,
  * messages, ledger/audit rows) are left in the local dev DB. Never
@@ -717,7 +717,7 @@ async function case7_chatMessaging() {
 }
 
 async function case8_cancelEdgeCases() {
-  console.log("\n== Case 8: cancel too late / idempotency ==");
+  console.log("\n== Case 8: unstarted call cancellation / idempotency ==");
   const seller = await makeApprovedSeller("booking-test-seller");
   const buyer = await makeBuyer("booking-test-buyer");
   await creditWallet(buyer.userId, 500, "support", randomUUID());
@@ -731,7 +731,11 @@ async function case8_cancelEdgeCases() {
 
   const cancel = await cancelBookingAs(buyer.client, bookingId);
   const data = cancel.data ?? {};
-  check("8.1 too_late (slot already started)", data.code === "too_late", JSON.stringify(data));
+  check("8.1 unstarted call cancelled after slot start with full refund", data.ok === true && data.refunded_buyer === 300 && data.released_seller === 0, JSON.stringify(data));
+  const { data: slotAfter } = await admin.from("availability_slots").select("status").eq("id", slotId).single();
+  check("8.2 elapsed slot is not offered again", slotAfter?.status === "booked", JSON.stringify(slotAfter));
+  const repeated = await cancelBookingAs(buyer.client, bookingId);
+  check("8.3 repeated cancel cannot refund twice", repeated.data?.code === "already_finalized", JSON.stringify(repeated.data));
 
   // Idempotency on a finalized booking: cancel a fully cancelled one.
   const listing2 = await makeApprovedListing(seller.sellerProfileId, 300, 30);
@@ -739,12 +743,12 @@ async function case8_cancelEdgeCases() {
   await creditWallet(buyer.userId, 300, "support", randomUUID());
   const p2 = await purchaseSlotAs(buyer.client, slot2);
   const b2 = p2.data?.booking_id;
-  await cancelBookingAs(buyer.client, b2); // first cancel succeeds
+  await admin.from("bookings").update({ buyer_joined_at: new Date().toISOString() }).eq("id", b2);
   const cancel2 = await cancelBookingAs(buyer.client, b2);
   const data2 = cancel2.data ?? {};
   check(
-    "8.2 already_finalized on second cancel",
-    data2.code === "already_finalized",
+    "8.4 a recorded call join blocks cancellation",
+    data2.code === "call_started",
     JSON.stringify(data2)
   );
 }

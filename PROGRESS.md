@@ -7,6 +7,56 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: marketplace and settlement rebuild (2026-10-02)
+
+User requested a creator marketplace focused on token purchases and private
+video calls, using xHamsterLive as a layout reference. The site keeps its own
+brand, accounts, listings and transaction history.
+
+### Delivered
+
+- Homepage now leads with search, real creator listings and direct Browse,
+  Buy tokens and Start selling paths. The Browse page has a clear empty state.
+  The legacy public test listing is excluded from marketplace results.
+- Buyer desktop navigation and footer expose My orders. Notification bell now
+  shows an unread count only when unread items exist, and its panel displays
+  the full title/body. Phone notification permissions require an explicit tap.
+- Mobile video call uses a custom participant grid and control bar; chat opens
+  as a bottom panel (side panel on desktop). Buyer and seller presence is
+  verified against LiveKit's server API when each connects, in addition to the
+  signed provider webhook. Last disconnect records completion.
+- Unstarted paid/scheduled calls can be cancelled after their slot begins.
+  Seller cancellation fully refunds the buyer; buyer cancellation after start
+  fully refunds when the seller never joined. The existing configurable
+  before-start partial-refund policy remains. An elapsed slot does not reopen.
+  Ledger credits, booking state and audit run in one locked RPC transaction.
+- A buyer who joins alone is no longer treated as having completed a call.
+  Seller absence is refunded by the no-show RPC, including `live` bookings.
+  A database cron job runs every five minutes for no-show refunds and escrow
+  releases. Seller-attended calls with missing close webhooks complete after
+  the call window and grace expire. Cron only settles bookings created after
+  the `settlement_cutover` migration marker; older paid bookings need review
+  because past call presence cannot be reconstructed reliably.
+
+### Validation and launch state
+
+- Local migrations applied; pg_cron job executed successfully in local DB.
+  The three migrations were dry-run and applied to production; the production
+  cutover marker exists. Historical bookings were not settled automatically.
+- `npm run build`, `npm test`, `npm run test:topups`, `npm run lint` passed
+  during this phase. Lint has zero errors and 19 prior warnings.
+- All 13 browser tests pass, covering desktop Orders/notifications, seller
+  cancellation with ledger refund, mobile chat layout, and **two LiveKit participants** with
+  fake camera devices joining one room and recording completion.
+- Production currently has five active token packs, **zero open slots**, and
+  no real approved listing yet. Its only approved listing was a grace-window
+  test fixture, now excluded publicly. Sellers must publish real listings and
+  availability before buyers can book. Existing historical paid bookings are
+  left unchanged for review.
+- A funded production token payment and real human camera/audio quality still
+  need live verification; local payment/provider tests and cloud connection
+  tests do not spend money.
+
 ## Phase: core-flow reliability pass (2026-10-02)
 
 User requested ownership of the existing Zclub app and fixes for its bugs.

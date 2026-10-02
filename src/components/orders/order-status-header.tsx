@@ -15,7 +15,7 @@ function durationMinutes(startsIso: string, endsIso: string) {
 
 export function OrderStatusHeader({ order }: { order: OrderDetail }) {
   const minutes = durationMinutes(order.slot.startsAt, order.slot.endsAt);
-  const cancellable = order.status === "paid" || order.status === "scheduled";
+  const cancellable = (order.status === "paid" || order.status === "scheduled") && !order.callStarted;
   const reportable = order.status === "completed";
 
   return (
@@ -56,7 +56,7 @@ export function OrderStatusHeader({ order }: { order: OrderDetail }) {
             />
           ) : null}
           {cancellable ? (
-            <CancelBookingButton bookingId={order.id} />
+            <CancelBookingButton bookingId={order.id} role={order.role} priceTokens={order.priceTokens} />
           ) : null}
         </div>
       </CardContent>

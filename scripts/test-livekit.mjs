@@ -355,14 +355,17 @@ async function case5_webhookIdempotency() {
     `status=${after?.status}`
   );
 
-  // room_finished: transitions live -> completed.
+  const sellerJoin = await webhookApply(bookingId, "participant_joined", seller.userId, new Date().toISOString());
+  check("5.5 seller also joined", sellerJoin.data?.ok === true, JSON.stringify(sellerJoin.data));
+
+  // room_finished: a call with the seller present transitions to completed.
   const finish = await webhookApply(bookingId, "room_finished", null, new Date().toISOString());
-  check("5.5 room_finished ok", finish.data?.ok === true, JSON.stringify(finish.data));
+  check("5.6 room_finished ok", finish.data?.ok === true, JSON.stringify(finish.data));
 
   // Replay room_finished — must be idempotent (no error, no change).
   const replay2 = await webhookApply(bookingId, "room_finished", null, new Date().toISOString());
   check(
-    "5.6 room_finished replay ok",
+    "5.7 room_finished replay ok",
     replay2.data?.ok === true,
     JSON.stringify(replay2.data)
   );
@@ -373,7 +376,7 @@ async function case5_webhookIdempotency() {
     .eq("id", bookingId)
     .maybeSingle();
   check(
-    "5.7 booking still completed (no double transition)",
+    "5.8 booking still completed (no double transition)",
     after2?.status === "completed",
     `status=${after2?.status}`
   );
@@ -381,7 +384,7 @@ async function case5_webhookIdempotency() {
   // Unknown event: no-op, no error.
   const unknown = await webhookApply(bookingId, "track_published", buyer.userId, new Date().toISOString());
   check(
-    "5.8 unknown event: unknown_event code",
+    "5.9 unknown event: unknown_event code",
     unknown.data?.code === "unknown_event",
     JSON.stringify(unknown.data)
   );
@@ -394,10 +397,34 @@ async function case5_webhookIdempotency() {
     new Date().toISOString()
   );
   check(
-    "5.9 unknown participant: unknown_participant code",
-    intruder.data?.code === "unknown_participant",
+    "5.10 finalized booking rejects a late join event",
+    intruder.data?.code === "wrong_state",
     JSON.stringify(intruder.data)
   );
+}
+
+async function case6_buyerAloneGetsRefund() {
+  console.log("\n== Case 6: buyer alone in call / seller no-show ==");
+  const seller = await makeApprovedSeller("livekit-test-seller");
+  const buyer = await makeBuyer("livekit-test-buyer");
+  await creditWallet(buyer.userId, 1000);
+  const listingId = await makeApprovedListing(seller.sellerProfileId, 500, 30);
+  const slotId = await addSlot(listingId, 500, 30, 4);
+  const purchase = await purchaseSlotAs(buyer.client, slotId);
+  const bookingId = purchase.data?.booking_id;
+  check("6.0 setup purchase", purchase.data?.ok === true);
+  const joined = await webhookApply(bookingId, "participant_joined", buyer.userId, new Date().toISOString());
+  check("6.1 buyer joined", joined.data?.ok === true);
+  await webhookApply(bookingId, "room_finished", null, new Date().toISOString());
+  const { data: afterLeave } = await admin.from("bookings").select("status").eq("id", bookingId).single();
+  check("6.2 buyer-only call stays eligible for no-show refund", afterLeave?.status === "live", JSON.stringify(afterLeave));
+  await admin.from("availability_slots").update({ starts_at: new Date(Date.now() - 20 * 60_000).toISOString() }).eq("id", slotId);
+  const refunded = await admin.rpc("mark_no_show_refund", { _booking_id: bookingId });
+  check("6.3 seller no-show refunds buyer", refunded.data?.ok === true, JSON.stringify(refunded.data));
+  const { data: afterRefund } = await admin.from("bookings").select("status").eq("id", bookingId).single();
+  check("6.4 booking is seller_no_show", afterRefund?.status === "seller_no_show");
+  const lateJoin = await webhookApply(bookingId, "participant_joined", seller.userId, new Date().toISOString());
+  check("6.5 late seller join cannot revive refunded booking", lateJoin.data?.code === "wrong_state", JSON.stringify(lateJoin.data));
 }
 
 // ---------------------------------------------------------------- main
@@ -409,6 +436,7 @@ async function main() {
     await case3_notParticipant();
     await case4_wrongState();
     await case5_webhookIdempotency();
+    await case6_buyerAloneGetsRefund();
   } catch (error) {
     console.error("Test runner error:", error);
     process.exit(1);

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   LogOutIcon,
   Loader2Icon,
+  ShoppingBagIcon,
   WalletIcon,
   StoreIcon,
   ShieldCheckIcon,
@@ -85,6 +86,9 @@ export function Navbar({
             className="transition-colors hover:text-gold"
           >
             Browse
+          </Link>
+          <Link href="/orders" prefetch className="inline-flex items-center gap-1.5 transition-colors hover:text-gold">
+            <ShoppingBagIcon className="size-4" /> My orders
           </Link>
           {user ? (
             <Link

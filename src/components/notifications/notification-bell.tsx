@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { CheckIcon, Loader2Icon } from "lucide-react";
+import { BellIcon, CheckIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useNotifications, type NotificationRow } from "@/hooks/use-notifications";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
-import Button38 from "@/components/watermelon/button-38";
 
 export function NotificationBell({
   initialRows,
@@ -20,13 +19,9 @@ export function NotificationBell({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const firstOpenRef = useRef(true);
 
   useEffect(() => {
     if (!open) return;
-    if (firstOpenRef.current) {
-      firstOpenRef.current = false;
-    }
     function onDocClick(ev: MouseEvent) {
       if (!rootRef.current) return;
       if (rootRef.current.contains(ev.target as Node)) return;
@@ -43,31 +38,21 @@ export function NotificationBell({
     };
   }, [open]);
 
-  // First time the bell opens, ask for push permission (best-effort).
-  useEffect(() => {
-    if (!open) return;
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (Notification.permission === "granted" || Notification.permission === "denied") return;
-    void maybeAutoSubscribe();
-  }, [open]);
-
-
-
   return (
     <div ref={rootRef} className="relative">
-      {/* watermelon button-38 as the notifications trigger; clicks bubble
-          from its <button> so the dropdown behaviour is unchanged. */}
-      <div onClick={() => setOpen((v) => !v)}>
-        <Button38 />
-      </div>
+      <button type="button" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} aria-expanded={open} aria-controls="notifications-popover" onClick={() => setOpen((v) => !v)} className="relative grid size-10 place-items-center rounded-lg border border-gold/25 text-foreground hover:border-gold/50 hover:bg-gold/10">
+        <BellIcon className="size-[18px]" />
+        {unread > 0 ? <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-burgundy px-1 text-[10px] font-bold text-white" aria-hidden="true">{unread > 99 ? "99+" : unread}</span> : null}
+      </button>
       {open ? (
         <div
-          role="menu"
-          className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-lg border border-border/70 bg-surface shadow-2xl"
+          id="notifications-popover"
+          role="dialog"
+          aria-label="Notifications"
+          className="fixed inset-x-2 top-16 z-50 max-h-[calc(100dvh-5rem)] overflow-hidden rounded-xl border border-gold/25 bg-surface shadow-2xl md:absolute md:inset-x-auto md:top-auto md:right-0 md:mt-2 md:w-96"
         >
           <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-            <div className="text-sm font-medium">Notifications</div>
+            <div><div className="text-sm font-semibold">Notifications</div><p className="text-xs text-muted-foreground">{unread === 0 ? "All caught up" : `${unread} unread`}</p></div>
             {unread > 0 ? (
               <button
                 type="button"
@@ -89,7 +74,7 @@ export function NotificationBell({
               </button>
             ) : null}
           </div>
-          <ul className="max-h-96 overflow-y-auto">
+          <ul className="max-h-[min(65dvh,28rem)] overflow-y-auto">
             {rows.length === 0 ? (
               <li className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet.</li>
             ) : null}
@@ -115,10 +100,9 @@ export function NotificationBell({
             ))}
           </ul>
           <Separator />
-          <div className="px-4 py-2 text-center">
-            <Button asChild variant="ghost" size="sm" className="text-xs">
-              <Link href="/notifications">View all</Link>
-            </Button>
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => void maybeAutoSubscribe()}>Enable phone alerts</Button>
+            <Button asChild variant="ghost" size="sm" className="text-xs text-gold"><Link href="/notifications" onClick={() => setOpen(false)}>View all</Link></Button>
           </div>
         </div>
       ) : null}
@@ -141,21 +125,21 @@ function NotificationItem({
       type="button"
       disabled={pending}
       onClick={onMarkRead}
-      className={`flex w-full flex-col items-start gap-0.5 px-4 py-3 text-left text-sm transition-colors hover:bg-elevated/60 disabled:opacity-40 ${
-        isUnread ? "bg-burgundy/5" : ""
+      className={`flex w-full flex-col items-start gap-1 px-4 py-3 text-left text-sm transition-colors hover:bg-elevated/60 disabled:opacity-40 ${
+        isUnread ? "bg-gold/10" : ""
       }`}
     >
       <div className="flex w-full items-center justify-between gap-2">
-        <span className={`truncate font-medium ${isUnread ? "text-foreground" : "text-muted-foreground"}`}>
+        <span className={`font-medium leading-snug ${isUnread ? "text-foreground" : "text-foreground/75"}`}>
           {row.title}
         </span>
         {isUnread ? (
           <span className="h-2 w-2 shrink-0 rounded-full bg-gold" aria-hidden="true" />
         ) : null}
       </div>
-      {row.body ? <div className="line-clamp-2 text-xs text-muted-foreground">{row.body}</div> : null}
-      <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-        {relativeTime(row.created_at)}
+      {row.body ? <div className="text-xs leading-relaxed text-foreground/70">{row.body}</div> : null}
+      <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+        {row.type} · {relativeTime(row.created_at)}
       </div>
     </button>
   );
