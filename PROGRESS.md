@@ -46,14 +46,18 @@ brand, accounts, listings and transaction history.
   cutover marker exists. Historical bookings were not settled automatically.
 - `npm run build`, `npm test`, `npm run test:topups`, `npm run lint` passed
   during this phase. Lint has zero errors and 19 prior warnings.
-- All 13 browser tests pass, covering desktop Orders/notifications, seller
+- All 14 browser tests pass, covering desktop Orders/notifications, seller
   cancellation with ledger refund, mobile chat layout, and **two LiveKit participants** with
-  fake camera devices joining one room and recording completion.
+  fake camera devices joining one room and recording completion. The final
+  regression verifies that inactive listings disappear from public pages.
+- The production alias passed browser smoke checks at phone and desktop widths:
+  homepage, Browse, sign-in, top-up sign-in redirect, empty marketplace,
+  no horizontal overflow or browser errors.
 - Production currently has five active token packs, **zero open slots**, and
   no real active approved listing yet. Its only active approved listing was a
   grace-window test fixture, now excluded publicly. Sellers must publish real
-  listings and availability before buyers can book. Existing historical paid bookings are
-  left unchanged for review.
+  listings and availability before buyers can book. Existing historical paid
+  bookings are left unchanged for review.
 - A funded production token payment and real human camera/audio quality still
   need live verification; local payment/provider tests and cloud connection
   tests do not spend money.
