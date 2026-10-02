@@ -60,4 +60,3 @@ begin
     perform public.release_escrow(v_booking.id);
   end loop;
 end $$;
-

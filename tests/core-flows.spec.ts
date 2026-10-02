@@ -167,6 +167,10 @@ test("buyer desktop navigation exposes orders and notifications show their conte
   const note = await result(admin.from("notifications").insert({ user_id: buyer.user.id, type: "booking", title: "Call scheduled", body: "Your booked call is ready in My orders.", link: `/orders/${callBookingId}` }).select("id").single());
   await page.goto("/orders");
   await expect(page.locator("header nav").getByRole("link", { name: "My orders" })).toBeVisible();
+  for (const width of [768, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  }
   const bell = page.getByRole("button", { name: /Notifications/ });
   await expect(bell).toHaveAttribute("aria-label", /unread/);
   await bell.click();
