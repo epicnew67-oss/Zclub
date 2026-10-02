@@ -249,8 +249,8 @@ async function case2_tooLate() {
   const { error: updateErr } = await admin
     .from("availability_slots")
     .update({
-      starts_at: new Date(Date.now() - 120 * 60_000).toISOString(),
-      ends_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+      starts_at: new Date(Date.now() - 180 * 60_000).toISOString(),
+      ends_at: new Date(Date.now() - 120 * 60_000).toISOString(),
     })
     .eq("id", slotId);
   check("2.0b setup: back-dated slot", !updateErr, updateErr?.message);

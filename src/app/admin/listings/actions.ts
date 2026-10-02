@@ -100,8 +100,8 @@ export async function adminUnpublishListingAction(
   reason: string
 ): Promise<AdminListingActionResult> {
   const trimmed = reason.trim();
-  if (trimmed.length < 10) {
-    return { ok: false, error: "Admin unpublish requires a reason (≥10 characters)." };
+  if (!trimmed) {
+    return { ok: false, error: "Enter a reason before unpublishing." };
   }
 
   const supabase = await createClient();

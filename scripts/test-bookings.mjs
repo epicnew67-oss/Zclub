@@ -546,6 +546,20 @@ async function case4_cancelFullRefund() {
     .eq("action", "booking.cancel")
     .maybeSingle();
   check("4.9 audit_log row exists", !!audit);
+
+  const rebook = await purchaseSlotAs(buyer.client, slotId);
+  check("4.10 cancelled future slot can be booked again", rebook.data?.ok === true, JSON.stringify(rebook.data ?? rebook.error));
+  check("4.11 rebooking creates a new order", rebook.data?.booking_id !== bookingId);
+  const { data: sellerNote } = await admin.from("notifications")
+    .select("title, body")
+    .eq("user_id", seller.userId)
+    .eq("link", `/orders/${rebook.data?.booking_id}`)
+    .maybeSingle();
+  check("4.12 seller booking notification is readable", sellerNote?.title === "New video call booked" && sellerNote?.body?.includes("Open the order"));
+  const { error: archiveError } = await seller.client.rpc("archive_own_listing", { _listing_id: listingId });
+  check("4.13 seller can archive a listing with an existing paid call", !archiveError, archiveError?.message);
+  const { data: preserved } = await admin.from("bookings").select("status").eq("id", rebook.data?.booking_id).single();
+  check("4.14 paid call is preserved after listing archive", preserved?.status === "paid");
 }
 
 async function case5_cancelPartialRefund() {

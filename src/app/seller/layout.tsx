@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AuthCard } from "@/components/auth/auth-card";
 import { SellerSidebar, SellerMobileNav } from "@/components/seller/seller-sidebar";
+import { SellerBookingRefresh } from "@/components/seller/seller-booking-refresh";
 
 export default async function SellerLayout({ children }: { children: ReactNode }) {
   if (!isSupabaseConfigured()) {
@@ -67,6 +68,7 @@ export default async function SellerLayout({ children }: { children: ReactNode }
 
   return (
     <div className="flex flex-1">
+      <SellerBookingRefresh userId={user.id} />
       <SellerSidebar />
       <main className="flex-1 min-w-0">
         <SellerMobileNav />

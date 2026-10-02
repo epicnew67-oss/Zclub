@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useId } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { applyNotification, type NotificationRow, type NotificationState } from "@/lib/notification-state";
 export type { NotificationRow } from "@/lib/notification-state";
@@ -8,7 +8,6 @@ export type { NotificationRow } from "@/lib/notification-state";
 export function useNotifications(initialRows: NotificationRow[], initialUnread: number) {
   const [state, setState] = useState<NotificationState>({ rows: initialRows, unread: initialUnread });
   const [previous, setPrevious] = useState({ rows: initialRows, unread: initialUnread });
-  const channelId = useId();
   if (previous.rows !== initialRows || previous.unread !== initialUnread) {
     setPrevious({ rows: initialRows, unread: initialUnread });
     setState({ rows: initialRows, unread: initialUnread });
@@ -25,7 +24,7 @@ export function useNotifications(initialRows: NotificationRow[], initialUnread: 
       ]);
       if (active && !rows.error && !count.error) setState({ rows: rows.data ?? [], unread: count.count ?? 0 });
     }
-    const channel = supabase.channel(`notifications-self:${channelId}`)
+    const channel = supabase.channel(`notifications-self:${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, payload => {
         if (active) setState(prev => applyNotification(prev, payload.new as NotificationRow, true));
       })
@@ -36,7 +35,7 @@ export function useNotifications(initialRows: NotificationRow[], initialUnread: 
       .subscribe(status => { if (status === "SUBSCRIBED") void refresh(); });
     window.addEventListener("focus", refresh);
     return () => { active = false; window.removeEventListener("focus", refresh); void supabase.removeChannel(channel); };
-  }, [channelId]);
+  }, []);
 
   const markLocalRead = useCallback((id: string) => {
     const readAt = new Date().toISOString();

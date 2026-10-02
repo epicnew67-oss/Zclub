@@ -65,7 +65,7 @@ export default async function OrderDetailPage({
           <Badge variant={order.role === "buyer" ? "gold-outline" : "outline"}>
             {order.role === "buyer" ? "Buying" : "Selling"}
           </Badge>
-          <OrderStatusBadge status={order.status} />
+          <OrderStatusBadge status={order.status} role={order.role} />
           <span className="text-xs text-muted-foreground">Order {order.id.slice(0, 8)}</span>
         </div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { AuthCard } from "@/components/auth/auth-card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { SellerApprovedAlert } from "@/components/seller/seller-approved-alert";
+import { TimeZoneSettings } from "@/components/account/time-zone-settings";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default async function AccountPage() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, avatar_url, is_banned, created_at")
+        .select("display_name, avatar_url, is_banned, created_at, time_zone")
         .eq("id", user.id)
         .single(),
       supabase.from("user_roles").select("role").eq("user_id", user.id),
@@ -178,6 +179,8 @@ export default async function AccountPage() {
           </CardContent>
         </Card>
       </div>
+
+      <TimeZoneSettings initialTimeZone={profileResult.data?.time_zone ?? null} />
 
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <Button asChild variant="ghost">

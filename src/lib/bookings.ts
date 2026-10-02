@@ -126,6 +126,9 @@ export async function purchaseSlot(slotId: string): Promise<PurchaseResult> {
     _slot_id: slotId,
   } as never);
   if (error) {
+    if (error.message.includes("listing_unavailable")) {
+      return { ok: false, code: "listing_unavailable" };
+    }
     const insuff = error.message.match(
       /INSUFFICIENT_BALANCE have=(\d+), need=(\d+), shortfall=(\d+)/
     );

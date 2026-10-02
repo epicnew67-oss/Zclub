@@ -13,6 +13,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar";
+import { TimeZoneProvider } from "@/components/time-zone-provider";
 import { listNotifications, unreadCount, type NotificationRow } from "@/lib/notifications";
 
 const inter = Inter({
@@ -34,22 +35,23 @@ async function getNavbarSession(): Promise<{
   notifications: NotificationRow[];
   unread: number;
   roles: string[];
+  timeZone: string | null;
 }> {
   if (!isSupabaseConfigured()) {
-    return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [] };
+    return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [], timeZone: null };
   }
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [] };
+    if (!user) return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [], timeZone: null };
 
     const email = user.email ?? "unknown";
     const [profileResult, balanceResult, walletResult, rowsResult, unreadResult, rolesResult] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, time_zone")
         .eq("id", user.id)
         .single(),
       supabase.rpc("get_own_wallet_balance"),
@@ -78,9 +80,10 @@ async function getNavbarSession(): Promise<{
       notifications: (rowsResult.data ?? []) as NotificationRow[],
       unread: unreadResult.count ?? 0,
       roles: ((rolesResult.data ?? []) as Array<{ role: string }>).map((row) => row.role),
+      timeZone: profileResult.data?.time_zone ?? null,
     };
   } catch {
-    return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [] };
+    return { user: null, balance: null, walletId: null, notifications: [], unread: 0, roles: [], timeZone: null };
   }
 }
 
@@ -116,7 +119,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const { user, balance, walletId, notifications, unread, roles } = await getNavbarSession();
+  const { user, balance, walletId, notifications, unread, roles, timeZone } = await getNavbarSession();
 
   return (
     <html
@@ -125,6 +128,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <BrandStyle />
+        <TimeZoneProvider value={timeZone}>
         <TooltipProvider delayDuration={200}>
           <LoadingScreen />
           {/* Logged-in users keep the full header (balance chip +
@@ -154,6 +158,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </>
           ) : null}
         </TooltipProvider>
+        </TimeZoneProvider>
         <Toaster position="top-center" />
         <ServiceWorkerRegistrar />
       </body>

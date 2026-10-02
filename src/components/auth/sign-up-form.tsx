@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TimeZoneSelect, resolvedTimeZone } from "@/components/time-zone-select";
 
 const MIN_PASSWORD = 8;
 
@@ -16,6 +17,7 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [timeZone, setTimeZone] = useState("detect");
   // Honeypot — hidden field that real users won't fill in. Bots that
   // scan every input will populate it; we reject any submission that
   // does. Combined with the per-IP rate limit in proxy.ts this is the
@@ -68,7 +70,7 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
         email: email.trim(),
         password,
         options: {
-          data: { display_name: displayName.trim() },
+          data: { display_name: displayName.trim(), time_zone: resolvedTimeZone(timeZone) },
           emailRedirectTo: `${window.location.origin}/auth/check-email`,
         },
       });
@@ -165,6 +167,12 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
           required
           minLength={MIN_PASSWORD}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="sign-up-time-zone">Your region / time zone</Label>
+        <TimeZoneSelect id="sign-up-time-zone" value={timeZone} onChange={setTimeZone} disabled={submitting} />
+        <p className="text-xs text-muted-foreground">Calls will appear in this time zone. You can change it in your account later.</p>
       </div>
 
       <Button type="submit" className="w-full" disabled={submitting}>

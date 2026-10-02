@@ -171,6 +171,7 @@ const { data: draft, error: draftErr } = await admin
     description: "Friendly one-on-one chats about books and life.",
     price_tokens: 250,
     duration_minutes: 30,
+    is_active: false,
   })
   .select("id, status")
   .single();
@@ -265,10 +266,11 @@ check("support user approves", !approveErr, approveErr?.message);
 
 const { data: approvedRow } = await admin
   .from("listings")
-  .select("status, reviewed_by, reviewed_at")
+  .select("status, is_active, reviewed_by, reviewed_at")
   .eq("id", draft.id)
   .maybeSingle();
 check("status is approved", approvedRow?.status === "approved");
+check("approval activates seller-created listing", approvedRow?.is_active === true);
 check(
   "reviewed_by is the support user",
   approvedRow?.reviewed_by === support.userId
@@ -528,6 +530,32 @@ check("removing an open slot succeeds", !removeOpenErr, removeOpenErr?.message);
 
 // ---------------------------------------------------------------- 8. unpublish (seller path)
 
+const pausedSlotId = randomUUID();
+const { error: pausedSlotErr } = await admin.from("availability_slots").insert({
+  id: pausedSlotId, listing_id: draft.id,
+  starts_at: new Date(Date.now() + 84 * 60 * 60 * 1000).toISOString(),
+  ends_at: new Date(Date.now() + 84.5 * 60 * 60 * 1000).toISOString(),
+  price_tokens: 300, status: "open",
+});
+check("pause test has an open slot", !pausedSlotErr, pausedSlotErr?.message);
+const { error: pauseErr } = await seller.client.rpc("set_own_listing_active", { _listing_id: draft.id, _active: false });
+check("seller can pause an approved listing", !pauseErr, pauseErr?.message);
+const { data: pausedRow } = await admin.from("listings").select("is_active").eq("id", draft.id).single();
+check("paused listing is inactive", pausedRow?.is_active === false);
+const { error: otherActivateErr } = await other.client.rpc("set_own_listing_active", { _listing_id: draft.id, _active: true });
+check("another seller cannot activate the listing", Boolean(otherActivateErr));
+const { error: pauseBuyerCreditErr } = await admin.rpc("wallet_credit", {
+  _user_id: buyer.userId, _amount: 300, _entry_type: "support_adjustment",
+  _ref_type: "test_fixture", _ref_id: randomUUID(), _description: "Paused listing test", _created_by: null,
+});
+check("buyer has enough tokens to exercise paused-slot guard", !pauseBuyerCreditErr, pauseBuyerCreditErr?.message);
+const { data: pausedPurchase, error: pausedPurchaseErr } = await buyerClient.rpc("purchase_slot", { _slot_id: pausedSlotId });
+check("known slot ID cannot book a paused listing", pausedPurchase?.code === "listing_unavailable" || pausedPurchaseErr?.message?.includes("listing_unavailable"), JSON.stringify({ pausedPurchase, pausedPurchaseErr }));
+const { error: activateErr } = await seller.client.rpc("set_own_listing_active", { _listing_id: draft.id, _active: true });
+check("seller can reactivate an approved listing", !activateErr, activateErr?.message);
+const { data: activeRow } = await admin.from("listings").select("is_active").eq("id", draft.id).single();
+check("reactivated listing is active", activeRow?.is_active === true);
+
 const { error: sellerUnpubErr } = await seller.client.rpc("unpublish_listing", {
   _listing_id: draft.id,
   _reason: null,
@@ -572,16 +600,16 @@ check("admin unpublish without reason blocked", Boolean(adminNoReasonErr));
 
 const { error: adminShortReasonErr } = await supportClient.rpc("unpublish_listing", {
   _listing_id: draft3.id,
-  _reason: "short",
+  _reason: "x",
 });
-check("admin unpublish with <10-char reason blocked", Boolean(adminShortReasonErr));
+check("admin unpublish accepts a one-letter reason", !adminShortReasonErr, adminShortReasonErr?.message);
 
 const adminReason = "Taken down for policy review by support team today.";
 const { error: adminUnpubErr } = await supportClient.rpc("unpublish_listing", {
   _listing_id: draft3.id,
   _reason: adminReason,
 });
-check("admin unpublish with reason succeeds", !adminUnpubErr, adminUnpubErr?.message);
+check("repeated admin unpublish is harmless", !adminUnpubErr, adminUnpubErr?.message);
 
 const { data: draft3After } = await admin
   .from("listings")
@@ -589,9 +617,31 @@ const { data: draft3After } = await admin
   .eq("id", draft3.id)
   .maybeSingle();
 check("status is unpublished", draft3After?.status === "unpublished");
-check("unpublished_reason recorded", draft3After?.unpublished_reason === adminReason);
+check("one-letter unpublished reason recorded", draft3After?.unpublished_reason === "x");
 
-// ---------------------------------------------------------------- 10. storage RLS
+// ---------------------------------------------------------------- 10. seller archive (soft delete)
+
+const { error: otherArchiveErr } = await other.client.rpc("archive_own_listing", { _listing_id: draft.id });
+check("another seller cannot delete this listing", Boolean(otherArchiveErr));
+const archiveSlotId = randomUUID();
+await admin.from("availability_slots").insert({
+  id: archiveSlotId, listing_id: draft.id,
+  starts_at: new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString(),
+  ends_at: new Date(Date.now() + 96.5 * 60 * 60 * 1000).toISOString(),
+  price_tokens: 300, status: "open",
+});
+const { error: archiveErr } = await seller.client.rpc("archive_own_listing", { _listing_id: draft.id });
+check("seller deletes own listing", !archiveErr, archiveErr?.message);
+const { data: archived } = await admin.from("listings").select("status,is_active,soft_deleted_at").eq("id", draft.id).single();
+check("deleted listing is soft deleted and inactive", archived?.status === "unpublished" && archived?.is_active === false && Boolean(archived?.soft_deleted_at));
+const { data: archivedSlot } = await admin.from("availability_slots").select("status").eq("id", archiveSlotId).single();
+check("deleting listing blocks its unbooked slot", archivedSlot?.status === "blocked");
+const { data: retainedSlot } = await admin.from("availability_slots").select("status").eq("id", slot1Id).single();
+check("deleting listing keeps booked slot", retainedSlot?.status === "booked");
+const { data: archiveAudit } = await admin.from("audit_log").select("id").eq("target_id", draft.id).eq("action", "listing.archive").maybeSingle();
+check("listing deletion writes audit row", Boolean(archiveAudit?.id));
+
+// ---------------------------------------------------------------- 11. storage RLS
 
 const { error: ownUploadErr } = await seller.client.storage
   .from("listing-photos")

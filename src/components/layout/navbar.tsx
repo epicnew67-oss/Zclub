@@ -136,6 +136,7 @@ export function Navbar({
               <NotificationBell
                 initialRows={notifications}
                 initialUnread={unread}
+                isSeller={isSeller}
               />
 
               <DropdownMenu>

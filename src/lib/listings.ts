@@ -38,6 +38,7 @@ export type ListingRow = {
   price_tokens: number;
   duration_minutes: number;
   status: ListingStatus;
+  is_active: boolean;
   submitted_for_review_at: string | null;
   reviewed_at: string | null;
   reviewed_by: string | null;
@@ -100,14 +101,11 @@ async function decorateWithPhotosAndCategory(
   listing: ListingRow,
   categoryMap: Map<string, Category>
 ): Promise<ListingDetail> {
-  const [{ data: photoRows }, urlMap] = await Promise.all([
-    admin
-      .from("listing_photos")
-      .select("id, path, sort_order")
-      .eq("listing_id", listing.id)
-      .order("sort_order"),
-    Promise.resolve(new Map<string, string>()),
-  ]);
+  const { data: photoRows } = await admin
+    .from("listing_photos")
+    .select("id, path, sort_order")
+    .eq("listing_id", listing.id)
+    .order("sort_order");
 
   const pathList = (photoRows ?? []).map((p) => p.path);
   const signed = await signPhotoPathsInternal(admin, pathList);
@@ -157,7 +155,7 @@ export async function listSellerListings(
     admin
       .from("listings")
       .select(
-        "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
+        "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, is_active, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
       )
       .eq("seller_id", sellerProfileId)
       .is("soft_deleted_at", null)
@@ -178,10 +176,11 @@ export async function getListingForSeller(
   const { data: row } = await admin
     .from("listings")
     .select(
-      "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
+      "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, is_active, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
     )
     .eq("id", listingId)
     .eq("seller_id", sellerProfileId)
+    .is("soft_deleted_at", null)
     .maybeSingle();
   if (!row) return null;
   const categoryMap = await loadCategories(admin);
@@ -194,9 +193,10 @@ export async function listPendingReviewListings(): Promise<AdminQueueRow[]> {
     admin
       .from("listings")
       .select(
-        "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
+        "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, is_active, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
       )
       .eq("status", "pending_review")
+      .is("soft_deleted_at", null)
       .order("submitted_for_review_at", { ascending: true }),
     loadCategories(admin),
   ]);
@@ -237,11 +237,11 @@ export async function listAdminListingsHistory(): Promise<AdminQueueRow[]> {
     admin
       .from("listings")
       .select(
-        "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
+        "id, seller_id, title, description, category_id, price_tokens, duration_minutes, status, is_active, submitted_for_review_at, reviewed_at, reviewed_by, review_note, unpublished_reason, soft_deleted_at, created_at, updated_at"
       )
-      .neq("status", "pending_review")
+      .eq("status", "approved")
       .is("soft_deleted_at", null)
-      .order("reviewed_at", { ascending: false })
+      .order("updated_at", { ascending: false })
       .limit(50),
     loadCategories(admin),
   ]);
@@ -285,6 +285,8 @@ export type Slot = {
   ends_at: string;
   price_tokens: number;
   status: "open" | "booked" | "blocked";
+  bookingId?: string | null;
+  bookingStatus?: string | null;
 };
 
 export async function listSlotsForListing(
@@ -319,13 +321,30 @@ export async function listSlotsForSellerListings(
     status: Slot["status"];
     listings: { seller_id: string }[];
   };
-  return ((rows ?? []) as unknown as Joined[]).map((r) => ({
+  const sellerSlots = ((rows ?? []) as unknown as Joined[]).map((r) => ({
     id: r.id,
     listing_id: r.listing_id,
     starts_at: r.starts_at,
     ends_at: r.ends_at,
     price_tokens: r.price_tokens,
     status: r.status,
+  }));
+  const bookedIds = sellerSlots.filter((slot) => slot.status === "booked").map((slot) => slot.id);
+  if (bookedIds.length === 0) return sellerSlots;
+  const { data: bookings } = await admin
+    .from("bookings")
+    .select("id, slot_id, status")
+    .in("slot_id", bookedIds)
+    .neq("status", "cancelled")
+    .order("created_at", { ascending: false });
+  const bySlot = new Map<string, { id: string; status: string }>();
+  for (const booking of bookings ?? []) {
+    if (!bySlot.has(booking.slot_id)) bySlot.set(booking.slot_id, booking);
+  }
+  return sellerSlots.map((slot) => ({
+    ...slot,
+    bookingId: bySlot.get(slot.id)?.id ?? null,
+    bookingStatus: bySlot.get(slot.id)?.status ?? null,
   }));
 }
 

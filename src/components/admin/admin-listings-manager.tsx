@@ -10,6 +10,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { LocalDateTime } from "@/components/local-date-time";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,7 @@ export type AdminListing = {
   title: string;
   description: string | null;
   status: string;
+  is_active: boolean;
   duration_minutes: number;
   price_tokens: number;
   category_id: string | null;
@@ -90,7 +92,7 @@ export function AdminListingsManager({
         <header>
           <h2 className="font-heading text-xl text-gold">Pending review</h2>
           <p className="text-sm text-muted-foreground">
-            Approve, reject, edit, or unpublish. Every action writes to the audit log with a before/after diff.
+            Approve, reject, or edit. Every action writes to the audit log with a before/after diff.
           </p>
         </header>
         {pending.length === 0 ? (
@@ -112,9 +114,9 @@ export function AdminListingsManager({
 
       <section className="space-y-3">
         <header>
-          <h2 className="font-heading text-xl text-gold">Approved history</h2>
+          <h2 className="font-heading text-xl text-gold">Approved listings</h2>
           <p className="text-sm text-muted-foreground">
-            Live listings. Unpublish if needed.
+            Listings that currently have approved status. Unpublish one to stop new bookings.
           </p>
         </header>
         {approved.length === 0 ? (
@@ -149,7 +151,7 @@ function PendingListingCard({
               {listing.submitted_for_review_at ? (
                 <>
                   {" · submitted "}
-                  {new Date(listing.submitted_for_review_at).toLocaleString()}
+                  <LocalDateTime value={listing.submitted_for_review_at} />
                 </>
               ) : null}
             </CardDescription>
@@ -216,7 +218,7 @@ function PendingListingCard({
 
 function ApprovedListingCard({ listing }: { listing: AdminListing }) {
   return (
-    <Card>
+    <Card data-testid={`admin-listing-${listing.id}`}>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -226,12 +228,12 @@ function ApprovedListingCard({ listing }: { listing: AdminListing }) {
               {listing.reviewed_at ? (
                 <>
                   {" · approved "}
-                  {new Date(listing.reviewed_at).toLocaleString()}
+                  <LocalDateTime value={listing.reviewed_at} />
                 </>
               ) : null}
             </CardDescription>
           </div>
-          <Badge variant="success">Approved</Badge>
+          <Badge variant={listing.is_active ? "success" : "secondary"}>{listing.is_active ? "Approved" : "Paused"}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -542,7 +544,7 @@ function UnpublishButton({ listingId }: { listingId: string }) {
         <DialogHeader>
           <DialogTitle>Unpublish listing</DialogTitle>
           <DialogDescription>
-            Reason is required (min 10 characters). The seller will see this on their listing.
+            Add a reason for the seller. One character is enough.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -575,7 +577,7 @@ function UnpublishButton({ listingId }: { listingId: string }) {
           <Button
             size="sm"
             className="bg-burgundy text-foreground hover:bg-burgundy/90"
-            disabled={busy || reason.trim().length < 10}
+            disabled={busy || reason.trim().length === 0}
             onClick={async () => {
               setBusy(true);
               setError(null);

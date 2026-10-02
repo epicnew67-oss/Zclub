@@ -42,7 +42,10 @@ export function BalanceChip({
     if (!walletId || !signedIn) return;
     const supabase = createClient();
     const channel = supabase
-      .channel(`wallet-balance:${walletId}`)
+      // The navbar and page header can each render a BalanceChip. Supabase
+      // reuses channels with the same topic, so each mounted subscription
+      // needs its own topic (including React Strict Mode effect remounts).
+      .channel(`wallet-balance:${walletId}:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {

@@ -23,6 +23,7 @@
     "test:payment-ordering": "node scripts/test-payment-ordering.mjs"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@livekit/components-react": "^2.9.24",
     "@livekit/components-styles": "^1.2.0",
     "@supabase/ssr": "^0.12.7",

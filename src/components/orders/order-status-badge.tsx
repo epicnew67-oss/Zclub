@@ -12,8 +12,12 @@ const STATUS_LABELS: Record<string, { label: string; variant: ComponentProps<typ
   disputed: { label: "Disputed", variant: "destructive" },
 };
 
-export function OrderStatusBadge({ status }: { status: string }) {
-  const meta = STATUS_LABELS[status] ?? { label: status, variant: "outline" as const };
+export function OrderStatusBadge({ status, role = "buyer" }: { status: string; role?: "buyer" | "seller" }) {
+  const meta = role === "seller" && (status === "paid" || status === "scheduled")
+    ? { label: "Slot booked", variant: "gold-outline" as const }
+    : role === "seller" && status === "live"
+      ? { label: "Video call running", variant: "success" as const }
+      : STATUS_LABELS[status] ?? { label: status, variant: "outline" as const };
   return (
     <Badge variant={meta.variant} aria-label={`Status: ${meta.label}`}>
       {meta.label}

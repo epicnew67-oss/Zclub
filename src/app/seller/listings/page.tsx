@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { listSellerListings, type ListingStatus } from "@/lib/listings";
 import { SubmitListingButton } from "@/components/seller/submit-listing-button";
+import { ArchiveListingButton } from "@/components/seller/archive-listing-button";
+import { ListingVisibilityButton } from "@/components/seller/listing-visibility-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -120,15 +122,15 @@ export default async function SellerListingsPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="text-base">{listing.title}</CardTitle>
-                    <Badge variant={STATUS_VARIANTS[listing.status]} className="capitalize">
-                      {STATUS_LABELS[listing.status]}
+                    <Badge variant={listing.status === "approved" && !listing.is_active ? "secondary" : STATUS_VARIANTS[listing.status]} className="capitalize">
+                      {listing.status === "approved" && !listing.is_active ? "Paused" : STATUS_LABELS[listing.status]}
                     </Badge>
                   </div>
                   <CardDescription className="line-clamp-2">
                     {listing.description ?? ""}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between gap-3">
+                <CardContent className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span>
                       <span className="font-medium text-gold">
@@ -139,7 +141,7 @@ export default async function SellerListingsPage() {
                     <span>{listing.duration_minutes} min</span>
                     {listing.category ? <span>{listing.category.name}</span> : null}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/seller/listings/${listing.id}/edit`}>Edit</Link>
                     </Button>
@@ -149,6 +151,8 @@ export default async function SellerListingsPage() {
                         photoCount={listing.photos.length}
                       />
                     ) : null}
+                    {listing.status === "approved" ? <ListingVisibilityButton listingId={listing.id} active={listing.is_active} /> : null}
+                    <ArchiveListingButton listingId={listing.id} />
                   </div>
                 </CardContent>
                 {listing.status === "rejected" && listing.review_note ? (

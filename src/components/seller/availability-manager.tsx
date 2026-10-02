@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CalendarPlusIcon, Loader2Icon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ import {
   type EventsData,
 } from "@/components/watermelon/calendar-widget";
 import { upperMeridiem } from "@/lib/datetime-format";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { useDisplayTimeZone } from "@/components/time-zone-provider";
+import { zonedWallTimeToUtc } from "@/lib/time-zone";
 
 export type SlotOption = {
   id: string;
@@ -30,6 +34,8 @@ export type SlotOption = {
   ends_at: string;
   price_tokens: number;
   status: "open" | "booked" | "blocked" | "cancelled";
+  bookingId?: string | null;
+  bookingStatus?: string | null;
 };
 
 export type ApprovedListingOption = {
@@ -49,10 +55,11 @@ type SlotByDay = {
   rows: SlotOption[];
 };
 
-function formatLocalDay(iso: string): string {
+function formatLocalDay(iso: string, timeZone: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, {
+    timeZone,
     weekday: "short",
     year: "numeric",
     month: "short",
@@ -60,11 +67,12 @@ function formatLocalDay(iso: string): string {
   });
 }
 
-function formatLocalTime(iso: string): string {
+function formatLocalTime(iso: string, timeZone: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return upperMeridiem(
     d.toLocaleTimeString(undefined, {
+      timeZone,
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -74,9 +82,10 @@ function formatLocalTime(iso: string): string {
 
 /** Preview for the datetime picker — always with uppercase AM/PM. */
 function formatLocalInputPreview(value: string): string | null {
-  const d = new Date(value);
+  const d = new Date(`${value}Z`);
   if (!value || Number.isNaN(d.getTime())) return null;
   const day = d.toLocaleDateString(undefined, {
+    timeZone: "UTC",
     weekday: "short",
     year: "numeric",
     month: "short",
@@ -84,6 +93,7 @@ function formatLocalInputPreview(value: string): string | null {
   });
   const time = upperMeridiem(
     d.toLocaleTimeString(undefined, {
+      timeZone: "UTC",
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -92,15 +102,30 @@ function formatLocalInputPreview(value: string): string | null {
   return `${day} · ${time}`;
 }
 
-function localDateKey(d: Date): string {
+function zonedParts(d: Date, timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const parts = Object.fromEntries(formatter.formatToParts(d).map((part) => [part.type, part.value]));
+  return { year: Number(parts.year), month: Number(parts.month), day: Number(parts.day), hour: Number(parts.hour), minute: Number(parts.minute) };
+}
+
+function localDateKey(d: Date, timeZone: string): string {
+  const parts = zonedParts(d, timeZone);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
 }
 
 const HOURS12 = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 
-export function AvailabilityManager({ listings, slots }: Props) {
+export function AvailabilityManager(props: Props) {
+  const hydrated = useHydrated();
+  if (!hydrated) return <div role="status" aria-label="Loading local availability" className="h-40 animate-pulse rounded-xl border border-border bg-elevated" />;
+  return <AvailabilityManagerInner {...props} />;
+}
+
+function AvailabilityManagerInner({ listings, slots }: Props) {
+  const timeZone = useDisplayTimeZone();
+  const now = useMemo(() => zonedParts(new Date(), timeZone), [timeZone]);
   const router = useRouter();
   const [selectedListingId, setSelectedListingId] = useState(
     listings[0]?.id ?? ""
@@ -110,17 +135,17 @@ export function AvailabilityManager({ listings, slots }: Props) {
     [listings, selectedListingId]
   );
 
-  const [selectedDate, setSelectedDate] = useState(() => localDateKey(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => localDateKey(new Date(), timeZone));
   const [hour12, setHour12] = useState(() => {
-    const h = new Date().getHours() % 12;
+    const h = now.hour % 12;
     return h === 0 ? 12 : h;
   });
   const [minute, setMinute] = useState(() => {
-    const m = new Date().getMinutes();
+    const m = now.minute;
     return Math.floor(m / 5) * 5;
   });
   const [meridiem, setMeridiem] = useState<"AM" | "PM">(() =>
-    new Date().getHours() >= 12 ? "PM" : "AM"
+    now.hour >= 12 ? "PM" : "AM"
   );
   const [duration, setDuration] = useState(
     String(selectedListing?.duration_minutes ?? 30)
@@ -150,7 +175,7 @@ export function AvailabilityManager({ listings, slots }: Props) {
   const byDay: SlotByDay[] = useMemo(() => {
     const buckets = new Map<string, SlotOption[]>();
     for (const slot of slotsForListing) {
-      const day = formatLocalDay(slot.starts_at);
+      const day = formatLocalDay(slot.starts_at, timeZone);
       const arr = buckets.get(day) ?? [];
       arr.push(slot);
       buckets.set(day, arr);
@@ -159,26 +184,27 @@ export function AvailabilityManager({ listings, slots }: Props) {
       date,
       rows,
     }));
-  }, [slotsForListing]);
+  }, [slotsForListing, timeZone]);
 
   // Agenda for the calendar widget — the seller's own slots, keyed by the
   // local day so dots + the day list match what they see below.
   const events: EventsData = useMemo(() => {
     const map: EventsData = {};
     for (const slot of slotsForListing) {
-      const key = localDateKey(new Date(slot.starts_at));
+      const key = localDateKey(new Date(slot.starts_at), timeZone);
       const list = map[key] ?? (map[key] = []);
       list.push({
-        title: slot.status === "booked" ? "Booked call" : "Open slot",
-        time: `${formatLocalTime(slot.starts_at)} – ${formatLocalTime(slot.ends_at)}`,
+        title: slot.bookingStatus === "live" ? "Video call running" : slot.status === "booked" ? "Slot booked" : "Open slot",
+        time: `${formatLocalTime(slot.starts_at, timeZone)} – ${formatLocalTime(slot.ends_at, timeZone)}`,
       });
     }
     return map;
-  }, [slotsForListing]);
+  }, [slotsForListing, timeZone]);
 
   const monthLabel = useMemo(
     () =>
-      new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, {
+      new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString(undefined, {
+        timeZone: "UTC",
         month: "long",
         year: "numeric",
       }),
@@ -199,16 +225,11 @@ export function AvailabilityManager({ listings, slots }: Props) {
       if (!startsAtLocal) {
         throw new Error("Pick a start date and time.");
       }
-      // Convert the picked wall-clock time using the BROWSER's timezone.
-      // (Parsing this string on the server would assume the server's
-      // zone — Vercel runs UTC, which shifted slots.)
-      const startsAtDate = new Date(startsAtLocal);
-      if (Number.isNaN(startsAtDate.getTime())) {
-        throw new Error("Pick a valid start date and time.");
-      }
+      const converted = zonedWallTimeToUtc(startsAtLocal, timeZone);
+      if ("error" in converted) throw new Error(converted.error);
       const result = await addSlotAction({
         listingId: selectedListing.id,
-        startsAtIso: startsAtDate.toISOString(),
+        startsAtIso: converted.iso,
         durationMinutes: Number(duration),
         priceTokens: Number(price),
       });
@@ -264,7 +285,7 @@ export function AvailabilityManager({ listings, slots }: Props) {
         <CardHeader>
           <CardTitle className="text-gold">Manage availability</CardTitle>
           <CardDescription>
-            Pick a listing, add slots in your local time, and we&apos;ll store them as UTC.
+            Pick a listing, add slots in {timeZone}, and we&apos;ll store them as UTC.
             Overlapping slots are rejected.
           </CardDescription>
         </CardHeader>
@@ -366,7 +387,7 @@ export function AvailabilityManager({ listings, slots }: Props) {
                 </div>
                 {formatLocalInputPreview(startsAtLocal) ? (
                   <p className="pb-2 text-xs text-muted-foreground">
-                    Local time: {formatLocalInputPreview(startsAtLocal)}
+                    {timeZone}: {formatLocalInputPreview(startsAtLocal)}
                   </p>
                 ) : null}
               </div>
@@ -421,7 +442,7 @@ export function AvailabilityManager({ listings, slots }: Props) {
         <CardHeader>
           <CardTitle>Upcoming slots</CardTitle>
           <CardDescription>
-            Showing slots for the selected listing, grouped by local date.
+            Showing slots for the selected listing in {timeZone}, grouped by local date.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -446,16 +467,20 @@ export function AvailabilityManager({ listings, slots }: Props) {
                         >
                           <div className="flex items-center gap-3 text-sm">
                             <span className="font-medium text-foreground">
-                              {formatLocalTime(slot.starts_at)} – {formatLocalTime(slot.ends_at)}
+                              {formatLocalTime(slot.starts_at, timeZone)} – {formatLocalTime(slot.ends_at, timeZone)}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {slot.price_tokens.toLocaleString()} tokens
                             </span>
                             {isBooked ? (
-                              <Badge variant="gold-outline">Booked</Badge>
+                              <Badge variant={slot.bookingStatus === "live" ? "success" : "gold-outline"}>
+                                {slot.bookingStatus === "live" ? "Video call running" : slot.bookingStatus === "completed" || slot.bookingStatus === "released" ? "Call completed" : "Slot booked"}
+                              </Badge>
                             ) : null}
                           </div>
-                          {isBooked ? null : (
+                          {isBooked ? (
+                            slot.bookingId ? <Button asChild size="sm" variant="outline"><Link href={`/orders/${slot.bookingId}`}>{slot.bookingStatus === "live" ? "Open call" : "View booking"}</Link></Button> : null
+                          ) : (
                             <Button
                               size="sm"
                               variant="outline"

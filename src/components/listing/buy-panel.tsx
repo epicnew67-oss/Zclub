@@ -16,8 +16,9 @@ import { purchaseSlotAction } from "@/app/orders/actions";
 import type { BrowseListingDetail } from "@/lib/browse";
 import { upperMeridiem } from "@/lib/datetime-format";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { useDisplayTimeZone } from "@/components/time-zone-provider";
 
-function formatLocalRange(startsIso: string, endsIso: string, hydrated: boolean): string {
+function formatLocalRange(startsIso: string, endsIso: string, hydrated: boolean, timeZone: string): string {
   const s = new Date(startsIso);
   const e = new Date(endsIso);
   const opts: Intl.DateTimeFormatOptions = {
@@ -27,15 +28,10 @@ function formatLocalRange(startsIso: string, endsIso: string, hydrated: boolean)
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: hydrated ? undefined : "UTC",
+    timeZone,
   };
   return upperMeridiem(
-    `${s.toLocaleString(hydrated ? undefined : "en-US", opts)} – ${e.toLocaleTimeString(hydrated ? undefined : "en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: hydrated ? undefined : "UTC",
-    })}`
+    `${s.toLocaleString(hydrated ? undefined : "en-US", { ...opts, timeZoneName: "short" })} – ${e.toLocaleString(hydrated ? undefined : "en-US", { ...opts, timeZoneName: "short" })}`
   );
 }
 
@@ -77,6 +73,7 @@ export function BuyPanel({
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
   const hydrated = useHydrated();
+  const timeZone = useDisplayTimeZone();
 
   const slotId = params.get("slot");
   const selectedSlot =
@@ -174,7 +171,7 @@ export function BuyPanel({
             Selected slot
           </p>
           <p className="mt-0.5 text-foreground/90">
-            {formatLocalRange(selectedSlot.starts_at, selectedSlot.ends_at, hydrated)}
+            {formatLocalRange(selectedSlot.starts_at, selectedSlot.ends_at, hydrated, timeZone)}
           </p>
           <p className="mt-0.5 text-muted-foreground">
             {selectedSlot.price_tokens.toLocaleString()} tokens

@@ -215,3 +215,37 @@ export async function unpublishOwnListingAction(
   revalidatePath("/admin/listings");
   return { ok: true, data: undefined };
 }
+
+export async function archiveOwnListingAction(
+  listingId: string
+): Promise<ListingActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("archive_own_listing", {
+    _listing_id: listingId,
+  } as never);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/seller/listings");
+  revalidatePath("/seller/availability");
+  revalidatePath("/seller");
+  revalidatePath("/browse");
+  revalidatePath("/");
+  return { ok: true, data: undefined };
+}
+
+export async function setOwnListingActiveAction(
+  listingId: string,
+  active: boolean
+): Promise<ListingActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_own_listing_active", {
+    _listing_id: listingId,
+    _active: active,
+  } as never);
+  if (error) return { ok: false, error: error.message };
+
+  for (const path of ["/seller/listings", "/seller/availability", "/seller", "/browse", "/"]) {
+    revalidatePath(path);
+  }
+  return { ok: true, data: undefined };
+}

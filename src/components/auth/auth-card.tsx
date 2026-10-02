@@ -16,7 +16,7 @@ export function AuthCard({
   footer,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
 }) {

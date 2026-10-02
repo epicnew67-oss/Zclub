@@ -6,21 +6,22 @@ import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "cn";
 import type { BrowseSlot } from "@/lib/browse";
 import { upperMeridiem } from "@/lib/datetime-format";
+import { useDisplayTimeZone } from "@/components/time-zone-provider";
 
-function formatLocalDay(iso: string, hydrated: boolean): string {
+function formatLocalDay(iso: string, hydrated: boolean, timeZone: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString(hydrated ? undefined : "en-US", {
-    timeZone: hydrated ? undefined : "UTC",
+    timeZone,
     weekday: "short",
     month: "short",
     day: "numeric",
   });
 }
-function formatLocalTime(iso: string, hydrated: boolean): string {
+function formatLocalTime(iso: string, hydrated: boolean, timeZone: string): string {
   const d = new Date(iso);
   return upperMeridiem(
     d.toLocaleTimeString(hydrated ? undefined : "en-US", {
-      timeZone: hydrated ? undefined : "UTC",
+      timeZone,
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -30,6 +31,7 @@ function formatLocalTime(iso: string, hydrated: boolean): string {
 
 export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {
   const hydrated = useHydrated();
+  const timeZone = useDisplayTimeZone();
   const pathname = usePathname();
   const params = useSearchParams();
   const selectedId = params.get("slot");
@@ -70,7 +72,7 @@ export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {
   // Group by local date.
   const groups = new Map<string, BrowseSlot[]>();
   for (const slot of slots) {
-    const key = formatLocalDay(slot.starts_at, hydrated);
+    const key = formatLocalDay(slot.starts_at, hydrated, timeZone);
     const arr = groups.get(key) ?? [];
     arr.push(slot);
     groups.set(key, arr);
@@ -90,6 +92,9 @@ export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {
           </button>
         ) : null}
       </div>
+      <p className="text-xs text-muted-foreground">
+        Times shown in your time zone ({timeZone}).
+      </p>
       <div className="space-y-3">
         {Array.from(groups.entries()).map(([day, daySlots]) => (
           <div
@@ -116,7 +121,7 @@ export function SlotsPicker({ slots }: { slots: BrowseSlot[] }) {
                           : "border-border/70 bg-background/40 text-foreground/80 hover:border-gold/40 hover:text-gold"
                       )}
                     >
-                      {formatLocalTime(slot.starts_at, hydrated)} – {formatLocalTime(slot.ends_at, hydrated)}
+                      {formatLocalTime(slot.starts_at, hydrated, timeZone)} – {formatLocalTime(slot.ends_at, hydrated, timeZone)}
                     </button>
                   </li>
                 );

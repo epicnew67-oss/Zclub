@@ -7,6 +7,17 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: booking, moderation, loading, and timezone repairs (2026-10-02)
+
+- Fixed the `/orders` client crash caused by two wallet balance components subscribing to the same Supabase Realtime topic. Notification subscribers also use unique topics so the bell and full notification page can coexist.
+- Seller listings can be paused, reactivated, or soft-deleted. Approved drafts now become active on approval; existing approved inactive listings can be activated by their owner. Archive preserves existing orders and blocks unsold slots.
+- Booked slots show the linked order and change to “Video call running” when the booking goes live. Seller pages refresh on booking and notification changes. New booking notices include the buyer, listing, and price; existing opaque notices are backfilled. Sellers receive a repeating in-tab sound until opening notifications. Browser audio needs a user gesture and an open tab.
+- Admin moderation lists only approved listings in its unpublish section, sorts recent updates first, and accepts any nonempty reason. A timezone-safe date component also fixed a hydration failure that interrupted its dialog.
+- Cancelled future slots can be booked again while old orders remain in history. A known slot ID cannot bypass an inactive listing. Booking guards and listing visibility changes run in database transactions with audit entries.
+- Added a GSAP route loading skeleton with reduced-motion support. At sign-up people can choose a region/time zone; the account page lets existing users change it. The saved IANA zone controls booking, order, listing, notification and seller availability times even if the device is in another region. Unsaved accounts use the device zone. Seller wall-clock slots are converted to UTC in the selected zone; nonexistent and repeated daylight-saving times are rejected. The call-window message also uses the chosen zone.
+- Verification: `npm test`, `npm run test:topups`, `npm run build`, `npm run lint` (warnings only), and all 24 browser tests pass. The five production database migrations were applied on 2026-10-02. The `/orders` crash was reproduced and fixed with an authenticated local browser; verifying a particular production account still requires that account's session.
+
+
 ## Phase: marketplace and settlement rebuild (2026-10-02)
 
 User requested a creator marketplace focused on token purchases and private

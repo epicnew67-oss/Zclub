@@ -119,7 +119,7 @@ export default async function SellerOrdersPage() {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <OrderStatusBadge status={order.status} />
+                      <OrderStatusBadge status={order.status} role="seller" />
                       <span className="font-medium text-foreground tabular-nums">
                         {order.priceTokens.toLocaleString()}
                       </span>

@@ -2,83 +2,44 @@
 
 import { useTransition } from "react";
 import { CheckIcon, Loader2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
 import { useNotifications, type NotificationRow } from "@/hooks/use-notifications";
 import { LocalDateTime } from "@/components/local-date-time";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export function NotificationsList({ rows }: { rows: NotificationRow[] }) {
-  const initialUnread = rows.filter((r) => !r.read_at).length;
+  const initialUnread = rows.filter((row) => !row.read_at).length;
   const { rows: live, unread, markLocalRead, markAllLocalRead } = useNotifications(rows, initialUnread);
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gold/20 bg-surface/40">
-      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-        <div className="text-sm text-muted-foreground">
-          {live.length} total · {unread} unread
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={pending || unread === 0}
-          onClick={() =>
-            startTransition(async () => {
-              const r = await markAllNotificationsReadAction();
-              if (r.ok) markAllLocalRead();
-            })
-          }
-        >
-          {pending ? <Loader2Icon className="mr-1 h-3 w-3 animate-spin" /> : <CheckIcon className="mr-1 h-3 w-3" />}
+    <div className="overflow-hidden rounded-xl border border-border bg-background">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <p className="text-sm font-medium text-foreground">{unread ? `${unread} unread` : "All caught up"}</p>
+        <button type="button" disabled={pending || unread === 0} onClick={() => startTransition(async () => {
+          const result = await markAllNotificationsReadAction();
+          if (result.ok) markAllLocalRead();
+        })} className="inline-flex items-center gap-1.5 text-sm font-medium text-gold disabled:opacity-40">
+          {pending ? <Loader2Icon className="size-4 animate-spin" /> : <CheckIcon className="size-4" />}
           Mark all read
-        </Button>
+        </button>
       </div>
-      <ul>
-        {live.length === 0 ? (
-          <li className="px-4 py-12 text-center text-sm text-muted-foreground">
-            You don&apos;t have any notifications yet.
-          </li>
-        ) : null}
-        {live.map((r) => (
-          <li
-            key={r.id}
-            className={`flex flex-col gap-2 border-b border-border/30 px-4 py-4 last:border-0 ${
-              !r.read_at ? "bg-gold/10" : ""
-            }`}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="flex min-w-0 items-start gap-2">
-                {!r.read_at ? <span className="h-2 w-2 rounded-full bg-gold" aria-hidden="true" /> : null}
-                <div className="min-w-0 text-sm font-semibold leading-snug text-foreground">{r.title}</div>
-              </div>
-              <div className="text-xs text-muted-foreground"><LocalDateTime value={r.created_at} /></div>
+      <ul className="divide-y divide-border/70">
+        {live.length === 0 ? <li className="px-5 py-12 text-center text-sm text-muted-foreground">You don&apos;t have any notifications yet.</li> : null}
+        {live.map((row) => (
+          <li key={row.id} className={`border-l-[3px] px-5 py-5 ${row.read_at ? "border-l-transparent" : "border-l-gold bg-gold/5"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="min-w-0 text-base font-semibold leading-snug text-foreground">{row.title}</h2>
+              {!row.read_at ? <span className="shrink-0 rounded bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">New</span> : null}
             </div>
-            {r.body ? <div className="text-sm leading-relaxed text-foreground/75">{r.body}</div> : null}
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.type}</div>
-              <div className="flex items-center gap-2">
-                {!r.read_at ? (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        const res = await markNotificationReadAction(r.id);
-                        if (res.ok) markLocalRead(r.id);
-                      })
-                    }
-                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-                  >
-                    Mark read
-                  </button>
-                ) : null}
-                {r.link ? (
-                  <a href={r.link} className="text-xs text-gold hover:underline">
-                    Open →
-                  </a>
-                ) : null}
-              </div>
+            {row.body ? <p className="mt-2 whitespace-normal break-words text-sm leading-relaxed text-foreground/85">{row.body}</p> : null}
+            <p className="mt-2 text-xs text-muted-foreground"><LocalDateTime value={row.created_at} /></p>
+            <div className="mt-3 flex items-center gap-5">
+              {row.link ? <a href={safeRedirectPath(row.link, "/notifications")} className="text-sm font-medium text-gold hover:underline">{row.type === "booking" ? "View booking" : "Open"}</a> : null}
+              {!row.read_at ? <button type="button" disabled={pending} onClick={() => startTransition(async () => {
+                const result = await markNotificationReadAction(row.id);
+                if (result.ok) markLocalRead(row.id);
+              })} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-40">Mark read</button> : null}
             </div>
           </li>
         ))}
