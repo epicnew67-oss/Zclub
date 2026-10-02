@@ -650,6 +650,19 @@ const { error: ownUploadErr } = await seller.client.storage
   });
 check("owner can upload to own folder", !ownUploadErr, ownUploadErr?.message);
 
+const { error: svgUploadErr } = await seller.client.storage
+  .from("listing-photos")
+  .upload(`${seller.user.userId}/rls-test/script.svg`, new TextEncoder().encode("<svg onload='alert(1)'></svg>"), {
+    contentType: "image/svg+xml",
+  });
+check("seller cannot upload SVG as a listing photo", Boolean(svgUploadErr));
+const { error: avatarSvgErr } = await seller.client.storage
+  .from("seller-avatars")
+  .upload(`${seller.user.userId}/avatar-test.svg`, new TextEncoder().encode("<svg onload='alert(1)'></svg>"), {
+    contentType: "image/svg+xml",
+  });
+check("seller cannot upload SVG as a profile photo", Boolean(avatarSvgErr));
+
 const { error: foreignUploadErr } = await seller.client.storage
   .from("listing-photos")
   .upload(`someone-else/rls-test/photo.jpg`, new Uint8Array([1, 2, 3, 4]), {

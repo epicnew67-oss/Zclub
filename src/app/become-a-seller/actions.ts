@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 import { createClient } from "@/lib/supabase/server";
 import { alertNewSellerApplication } from "@/lib/admin-alerts";
 
@@ -71,8 +72,8 @@ export async function submitSellerApplicationAction(
   if (!termsVersion) {
     return { ok: false, error: "Terms version missing — refresh the page." };
   }
-  if (avatarPath && !avatarPath.startsWith(`${user.id}/`)) {
-    return { ok: false, error: "Avatar path is outside your folder." };
+  if (avatarPath && (!avatarPath.startsWith(`${user.id}/`) || !isSafeImagePath(avatarPath))) {
+    return { ok: false, error: "Choose a JPG, PNG, or WebP profile photo from your account." };
   }
 
   const headersList = await headers();

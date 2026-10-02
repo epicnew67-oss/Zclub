@@ -33,6 +33,13 @@ function FormInner({ termsVersion, defaultDisplayName }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   function onFileChange(file: File | null) {
+    if (file && (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5_000_000)) {
+      setError("Choose a JPG, PNG, or WebP photo under 5 MB.");
+      setAvatarFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+    setError(null);
     setAvatarFile(file);
     if (file) {
       const url = URL.createObjectURL(file);
@@ -73,7 +80,7 @@ function FormInner({ termsVersion, defaultDisplayName }: Props) {
       // private; the server signs paths at read time.
       let avatarPath: string | null = null;
       if (avatarFile) {
-        const ext = avatarFile.name.split(".").pop() ?? "jpg";
+        const ext = avatarFile.type === "image/png" ? "png" : avatarFile.type === "image/webp" ? "webp" : "jpg";
         const objectName = `${user.id}/avatar-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("seller-avatars")
@@ -130,11 +137,11 @@ function FormInner({ termsVersion, defaultDisplayName }: Props) {
               <Input
                 id="seller-avatar"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
               />
             </div>
-            <p className="text-xs text-muted-foreground">Images only. Neutral, non-explicit — this marketplace keeps it classy.</p>
+            <p className="text-xs text-muted-foreground">JPG, PNG, or WebP under 5 MB. Use a clear, appropriate photo.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

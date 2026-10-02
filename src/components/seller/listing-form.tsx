@@ -79,7 +79,13 @@ export function ListingForm({ categories, mode }: Props) {
   function onPickFiles(fileList: FileList | null) {
     if (!fileList) return;
     const remaining = MAX_PHOTOS - existingPhotos.length - newFiles.length;
-    const accepted = Array.from(fileList).slice(0, Math.max(0, remaining));
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const chosen = Array.from(fileList);
+    if (chosen.some((file) => !allowedTypes.includes(file.type) || file.size > 5_000_000)) {
+      toast.error("Choose JPG, PNG, or WebP photos under 5 MB each.");
+      return;
+    }
+    const accepted = chosen.slice(0, Math.max(0, remaining));
     if (accepted.length === 0) {
       toast.error(`Up to ${MAX_PHOTOS} photos per listing.`);
       return;
@@ -286,7 +292,7 @@ export function ListingForm({ categories, mode }: Props) {
         <CardHeader>
           <CardTitle>Photos</CardTitle>
           <CardDescription>
-            Up to {MAX_PHOTOS} photos. JPG / PNG, neutral imagery only.
+            Up to {MAX_PHOTOS} photos. JPG, PNG, or WebP under 5 MB each.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -338,7 +344,7 @@ export function ListingForm({ categories, mode }: Props) {
               <span>Add photos</span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 className="hidden"
                 onChange={(e) => onPickFiles(e.target.files)}

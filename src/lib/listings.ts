@@ -9,6 +9,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LISTING_PHOTOS_BUCKET as BUCKET_NAME } from "@/lib/listings/photos-bucket";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 
 export { LISTING_PHOTOS_BUCKET } from "@/lib/listings/photos-bucket";
 
@@ -77,7 +78,7 @@ async function signPhotoPathsInternal(
   const map = new Map<string, string>();
   if (paths.length === 0) return map;
   const signed = await Promise.all(
-    paths.map(async (p) => {
+    paths.filter(isSafeImagePath).map(async (p) => {
       const { data, error } = await admin.storage
         .from(BUCKET_NAME)
         .createSignedUrl(p, SIGNED_URL_TTL_SECONDS);

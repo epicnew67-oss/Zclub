@@ -10,6 +10,7 @@
 
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 
 export const SELLER_AVATAR_BUCKET = "seller-avatars";
 const SIGNED_URL_TTL_SECONDS = 600;
@@ -20,7 +21,7 @@ async function signAvatarPath(
   admin: ReturnType<typeof createAdminClient>,
   path: string | null
 ): Promise<string | null> {
-  if (!path) return null;
+  if (!isSafeImagePath(path)) return null;
   const { data, error } = await admin.storage
     .from(SELLER_AVATAR_BUCKET)
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);

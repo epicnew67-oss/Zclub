@@ -11,6 +11,7 @@ import "server-only";
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LISTING_PHOTOS_BUCKET } from "@/lib/listings/photos-bucket";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 import { signPhotoPaths as _signPhotoPaths } from "@/lib/listings";
 
 const SIGNED_URL_TTL_SECONDS = 600;
@@ -175,6 +176,7 @@ async function signOne(
   admin: ReturnType<typeof createAdminClient>,
   path: string
 ): Promise<string | null> {
+  if (!isSafeImagePath(path)) return null;
   const { data, error } = await admin.storage
     .from(LISTING_PHOTOS_BUCKET)
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
@@ -337,7 +339,7 @@ async function signAvatars(
   admin: ReturnType<typeof createAdminClient>, paths: Array<string | null>,
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();
-  await Promise.all([...new Set(paths.filter((path): path is string => Boolean(path)))].map(async (path) => {
+  await Promise.all([...new Set(paths.filter(isSafeImagePath))].map(async (path) => {
     const { data } = await admin.storage.from("seller-avatars").createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
     if (data?.signedUrl) result.set(path, data.signedUrl);
   }));

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 import { alertListingSubmitted } from "@/lib/admin-alerts";
 
 export type CreateListingInput = {
@@ -50,8 +51,8 @@ function sanitizePhotos(userId: string, paths: string[]): string[] | string {
   for (const p of paths) {
     if (!p || typeof p !== "string") continue;
     const trimmed = p.trim();
-    if (!trimmed.startsWith(`${userId}/`)) {
-      return "Photo path is outside your folder.";
+    if (!trimmed.startsWith(`${userId}/`) || !isSafeImagePath(trimmed)) {
+      return "Choose a JPG, PNG, or WebP photo from your account.";
     }
     cleaned.push(trimmed);
   }
