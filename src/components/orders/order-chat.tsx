@@ -22,9 +22,8 @@ function initials(name: string) {
     .join("") || "?";
 }
 
-function relTime(iso: string) {
+function relTime(iso: string, now: number) {
   const then = new Date(iso).getTime();
-  const now = Date.now();
   const diff = Math.round((now - then) / 1000);
   const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
   if (diff < 60) return rtf.format(-diff, "second");
@@ -64,8 +63,16 @@ export function OrderChat({
   const [messages, setMessages] = useState<Msg[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
+  const [clock, setClock] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const closed = status === "cancelled" || status === "seller_no_show";
+
+  useEffect(() => {
+    const tick = () => setClock(Date.now());
+    tick();
+    const timer = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Scroll to bottom on new message.
   useEffect(() => {
@@ -243,7 +250,7 @@ export function OrderChat({
                     ) : null}
                     <p className="whitespace-pre-wrap break-words">{m.body}</p>
                     <p className="mt-1 text-right text-[10px] text-muted-foreground">
-                      {relTime(m.createdAt)}
+                      {clock === null ? "Sent" : relTime(m.createdAt, clock)}
                     </p>
                   </div>
                   {mine ? (

@@ -6,6 +6,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { ListingCard } from "@/components/browse/listing-card";
 import { BrowseToolbar } from "@/components/browse/browse-toolbar";
 import { BrowseSkeletonGrid } from "@/components/browse/browse-skeleton";
+import { PresenceRefresh } from "@/components/browse/presence-refresh";
 import { getCategories, listBrowseListings, type BrowseSort } from "@/lib/browse";
 
 export const metadata: Metadata = {
@@ -64,6 +65,7 @@ export default async function BrowsePage({
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 md:px-6 md:py-12">
+      <PresenceRefresh />
       <header>
         <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
           <span className="text-gold">Browse calls</span>

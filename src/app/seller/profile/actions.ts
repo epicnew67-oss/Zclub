@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 
 export async function updateSellerProfileAction(input: {
   displayName: string;
@@ -19,21 +20,25 @@ export async function updateSellerProfileAction(input: {
   if (displayName.length < 2 || displayName.length > 80 || tagline.length > 120 || bio.length > 2000) {
     return { ok: false, error: "Check the name, tagline, and bio lengths." };
   }
-  if (input.avatarPath && !/^[-0-9a-f]{36}\/avatar-[0-9]+\.(jpg|jpeg|png|webp)$/i.test(input.avatarPath)) {
+  if (input.avatarPath && !isSafeImagePath(input.avatarPath)) {
     return { ok: false, error: "Invalid image path." };
   }
   if (input.avatarPath && !input.avatarPath.startsWith(`${user.id}/`)) {
     return { ok: false, error: "Invalid image owner." };
   }
+  if (input.avatarPath) {
+    const { error: photoError } = await session.rpc("set_own_profile_photo", { _path: input.avatarPath });
+    if (photoError) return { ok: false, error: "Could not save the profile photo." };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin.from("seller_profiles")
-    .update({ display_name: displayName, tagline, bio,
-      ...(input.avatarPath ? { avatar_url: input.avatarPath } : {}), updated_at: new Date().toISOString() })
+    .update({ display_name: displayName, tagline, bio, updated_at: new Date().toISOString() })
     .eq("user_id", user.id).eq("is_active", true).is("soft_deleted_at", null)
     .select("id").maybeSingle();
   if (error || !data) return { ok: false, error: "Could not save your seller profile." };
   revalidatePath("/seller/profile");
   revalidatePath("/browse");
   revalidatePath("/seller");
+  revalidatePath("/", "layout");
   return { ok: true };
 }

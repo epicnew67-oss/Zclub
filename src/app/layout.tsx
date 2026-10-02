@@ -15,8 +15,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar";
 import { TimeZoneProvider } from "@/components/time-zone-provider";
 import type { NotificationRow } from "@/lib/notifications";
-import { SellerPresence } from "@/components/seller/seller-presence";
 import { NavigationSkeleton } from "@/components/layout/navigation-skeleton";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,7 +53,7 @@ async function getNavbarSession(): Promise<{
     const [profileResult, balanceResult, walletResult, rowsResult, unreadResult, rolesResult] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, time_zone")
+        .select("display_name, time_zone, avatar_url")
         .eq("id", user.id)
         .single(),
       supabase.rpc("get_own_wallet_balance"),
@@ -72,10 +72,16 @@ async function getNavbarSession(): Promise<{
       supabase.from("user_roles").select("role").eq("user_id", user.id),
     ]);
 
+    const avatarPath = profileResult.data?.avatar_url;
+    const avatarUrl = isSafeImagePath(avatarPath)
+      ? (await supabase.storage.from("seller-avatars").createSignedUrl(avatarPath, 600)).data?.signedUrl ?? null
+      : null;
+
     return {
       user: {
         email,
         displayName: profileResult.data?.display_name?.trim() || email.split("@")[0],
+        avatarUrl,
       },
       balance: typeof balanceResult.data === "number" ? balanceResult.data : 0,
       walletId: walletResult.data?.id ?? null,
@@ -134,7 +140,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <TooltipProvider delayDuration={200}>
           <LoadingScreen />
           <NavigationSkeleton />
-          {roles.includes("seller") ? <SellerPresence /> : null}
           {/* Logged-in users keep the full header (balance chip +
               notifications + avatar + dropdown). Guests get the
               premium floating pill so the public homepage reads as

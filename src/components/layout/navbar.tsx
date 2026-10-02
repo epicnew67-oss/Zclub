@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,7 +18,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import type { NotificationRow } from "@/hooks/use-notifications";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ import {
 export type NavbarUser = {
   email: string;
   displayName: string;
+  avatarUrl: string | null;
 } | null;
 
 const STAFF_ROLES = ["support", "finance", "owner"] as const;
@@ -65,6 +66,20 @@ export function Navbar({
 
   const initialBalance = typeof balance === "number" ? balance : 0;
   const isSeller = roles.includes("seller");
+  useEffect(() => {
+    if (!isSeller) return;
+    const supabase = createClient();
+    const heartbeat = () => { void supabase.rpc("seller_heartbeat").then(() => undefined); };
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 25_000);
+    document.addEventListener("visibilitychange", heartbeat);
+    window.addEventListener("focus", heartbeat);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", heartbeat);
+      window.removeEventListener("focus", heartbeat);
+    };
+  }, [isSeller]);
   const isStaff = roles.some((role) =>
     (STAFF_ROLES as readonly string[]).includes(role)
   );
@@ -145,6 +160,7 @@ export function Navbar({
                   className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <Avatar>
+                    {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="Your profile photo" /> : null}
                     <AvatarFallback className="bg-gold/15 text-gold">
                       {(user.displayName || user.email)
                         .slice(0, 2)

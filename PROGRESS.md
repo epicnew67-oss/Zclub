@@ -7,6 +7,15 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: seller availability, balance, and account photos (2026-10-02)
+
+- Fixed the seller dashboard wallet card reading the Supabase response object instead of its numeric `data`. It now matches the navbar and ledger.
+- Added an explicit Online/Offline switch on the seller dashboard. It is animated with GSAP and respects reduced-motion settings. The database stores the seller's choice; switching Offline immediately clears the last heartbeat and stops new on-demand bookings. Switching Online immediately marks the seller available when they are eligible. The shared header refreshes online presence every 25 seconds while a seller browser tab is open. Public Browse and home refresh seller status while visible.
+- Fixed a long-standing presence bug: `void supabase.rpc(...)` created a lazy PostgREST request without sending it. The heartbeat now executes, including after the seller navigates away from the dashboard. A browser regression checks status from a separate customer session and refreshes an intentionally stale heartbeat on another page.
+- Added profile photos at sign-up and an account photo editor for all users. Email-confirmation sign-ups keep the selected photo in IndexedDB on that device until first sign-in; account and seller profile photos update together through an owner-scoped database function. Seller applications reuse an existing account photo. Browser tests cover the sign-up flow, account editing, and rejection of another user's image.
+- Chat relative timestamps now render a stable initial label before the browser clock starts, removing a hydration mismatch seen during the full browser run.
+- Migrations `20261214000000_profile_photo.sql` and `20261215000000_seller_online_toggle.sql` applied locally and in production. Local build, lint (warnings only), full backend suite, and 29 browser tests passed before the final presence regression; that regression and the chat check passed after the final fix.
+
 ## Phase: wallet clarity and payment security (2026-10-02)
 
 - Wallet text now uses plain English and reflects immediate settlement. A seller below the withdrawal threshold sees the balance and amount still needed, with no unusable `min 1,000, max 90` input.

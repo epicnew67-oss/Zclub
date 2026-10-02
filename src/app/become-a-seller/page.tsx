@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { AuthCard } from "@/components/auth/auth-card";
 import { getSellerStatus, getSellerTermsVersion } from "@/lib/seller";
 import { SellerApplicationForm } from "@/components/seller/seller-application-form";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 
 export const metadata: Metadata = { title: "Become a seller" };
 
@@ -29,7 +30,7 @@ export default async function BecomeASellerPage() {
     );
   }
 
-  const { user } = await requireUser("/become-a-seller");
+  const { user, supabase } = await requireUser("/become-a-seller");
   const [status, termsVersion] = await Promise.all([
     getSellerStatus(user.id),
     getSellerTermsVersion(),
@@ -112,6 +113,13 @@ export default async function BecomeASellerPage() {
     );
   }
 
+  const { data: accountProfile } = await supabase.from("profiles")
+    .select("display_name, avatar_url").eq("id", user.id).maybeSingle();
+  const accountAvatarPath = isSafeImagePath(accountProfile?.avatar_url) ? accountProfile.avatar_url : null;
+  const accountAvatarUrl = accountAvatarPath
+    ? (await supabase.storage.from("seller-avatars").createSignedUrl(accountAvatarPath, 600)).data?.signedUrl ?? null
+    : null;
+
   return (
     <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-6 overflow-hidden px-4 py-10 md:px-6 md:py-16">
       <div aria-hidden className="pointer-events-none absolute -top-24 right-2 h-72 w-72 rounded-full bg-burgundy/15 blur-3xl" />
@@ -130,7 +138,9 @@ export default async function BecomeASellerPage() {
 
       <SellerApplicationForm
         termsVersion={termsVersion}
-        defaultDisplayName={attemptsUsed > 0 ? (status.applications[0]?.display_name ?? "") : ""}
+        defaultDisplayName={attemptsUsed > 0 ? (status.applications[0]?.display_name ?? "") : accountProfile?.display_name ?? ""}
+        defaultAvatarPath={accountAvatarPath}
+        defaultAvatarUrl={accountAvatarUrl}
       />
     </div>
   );

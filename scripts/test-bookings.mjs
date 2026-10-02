@@ -778,7 +778,8 @@ async function case9_onDemandFlow() {
 
   const offline = await buyer.client.rpc("purchase_listing_now", { _listing_id: listingId });
   check("9.1 offline seller cannot be booked", offline.data?.code === "seller_offline", JSON.stringify(offline.data));
-  await seller.client.rpc("seller_heartbeat");
+  const online = await seller.client.rpc("set_seller_online", { _online: true });
+  check("9.1a seller can switch online", !online.error && online.data === true, online.error?.message);
   const bought = await buyer.client.rpc("purchase_listing_now", { _listing_id: listingId });
   const bookingId = bought.data?.booking_id;
   check("9.2 online seller can be booked immediately", bought.data?.ok === true && Boolean(bookingId), JSON.stringify(bought.data));

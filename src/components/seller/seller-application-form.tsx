@@ -15,19 +15,21 @@ import { submitSellerApplicationAction } from "@/app/become-a-seller/actions";
 type Props = {
   termsVersion: string;
   defaultDisplayName: string;
+  defaultAvatarPath?: string | null;
+  defaultAvatarUrl?: string | null;
 };
 
 export function SellerApplicationForm({ termsVersion, defaultDisplayName }: Props) {
   return <FormInner termsVersion={termsVersion} defaultDisplayName={defaultDisplayName} />;
 }
 
-function FormInner({ termsVersion, defaultDisplayName }: Props) {
+function FormInner({ termsVersion, defaultDisplayName, defaultAvatarPath = null, defaultAvatarUrl = null }: Props) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [gender, setGender] = useState("female");
   const [offering, setOffering] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(defaultAvatarUrl);
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +80,7 @@ function FormInner({ termsVersion, defaultDisplayName }: Props) {
       // owner-folder RLS lets the authenticated user write here. We
       // store the object path, not a public URL, because the bucket is
       // private; the server signs paths at read time.
-      let avatarPath: string | null = null;
+      let avatarPath: string | null = defaultAvatarPath;
       if (avatarFile) {
         const ext = avatarFile.type === "image/png" ? "png" : avatarFile.type === "image/webp" ? "webp" : "jpg";
         const objectName = `${user.id}/avatar-${Date.now()}.${ext}`;

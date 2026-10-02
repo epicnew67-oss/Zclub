@@ -319,14 +319,14 @@ async function getPresenceMap(
   const result = new Map<string, BrowseSeller["presence"]>();
   if (!sellerIds.length) return result;
   const [{ data: profiles }, { data: bookings }] = await Promise.all([
-    admin.from("seller_profiles").select("user_id, last_seen_at").in("user_id", sellerIds),
+    admin.from("seller_profiles").select("user_id, last_seen_at, wants_online").in("user_id", sellerIds),
     admin.from("bookings").select("seller_id, status, is_on_demand")
       .in("seller_id", sellerIds).in("status", ["paid", "scheduled", "live"])
       .is("soft_deleted_at", null),
   ]);
   const activeSince = Date.now() - 90_000;
   for (const profile of profiles ?? []) {
-    result.set(profile.user_id, profile.last_seen_at && new Date(profile.last_seen_at).getTime() > activeSince ? "available" : "offline");
+    result.set(profile.user_id, profile.wants_online && profile.last_seen_at && new Date(profile.last_seen_at).getTime() > activeSince ? "available" : "offline");
   }
   for (const booking of bookings ?? []) {
     if (booking.status === "live") result.set(booking.seller_id, "in_call");

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSellerStatus } from "@/lib/seller";
 import { listSellerListings } from "@/lib/listings";
 import { SellerApprovedAlert } from "@/components/seller/seller-approved-alert";
+import { SellerOnlineSwitch } from "@/components/seller/seller-online-switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,7 +78,7 @@ export default async function SellerDashboardPage() {
 
   const { data: profileRow } = await supabase
     .from("seller_profiles")
-    .select("id")
+    .select("id, wants_online")
     .eq("user_id", user.id)
     .maybeSingle();
   const listings = profileRow ? await listSellerListings(profileRow.id) : [];
@@ -87,7 +88,7 @@ export default async function SellerDashboardPage() {
     acc[l.status] = (acc[l.status] ?? 0) + 1;
     return acc;
   }, {});
-  const balance = typeof balanceResult === "number" ? balanceResult : 0;
+  const balance = typeof balanceResult.data === "number" ? balanceResult.data : 0;
 
   return (
     <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
@@ -107,6 +108,8 @@ export default async function SellerDashboardPage() {
           Welcome, <span className="font-medium text-foreground">{slug ?? "seller"}</span> — your seller profile is live.
         </p>
       </div>
+
+      {profileRow ? <SellerOnlineSwitch initialOnline={profileRow.wants_online} /> : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card variant="gold">

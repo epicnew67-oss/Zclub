@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Loader2Icon } from "lucide-react";
+import { CameraIcon, Loader2Icon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TimeZoneSelect, resolvedTimeZone } from "@/components/time-zone-select";
+import { applyPendingSignupPhoto, rememberSignupPhoto, validateProfilePhoto } from "@/lib/profile-photo-client";
 
 const MIN_PASSWORD = 8;
 
@@ -18,6 +19,8 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [timeZone, setTimeZone] = useState("detect");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   // Honeypot — hidden field that real users won't fill in. Bots that
   // scan every input will populate it; we reject any submission that
   // does. Combined with the per-IP rate limit in proxy.ts this is the
@@ -26,6 +29,17 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
   const [website, setWebsite] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
+
+  function choosePhoto(file: File | null) {
+    if (!file) return;
+    const invalid = validateProfilePhoto(file);
+    if (invalid) { setError(invalid); return; }
+    setError(null);
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,6 +79,7 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
 
     setSubmitting(true);
     try {
+      if (photo) await rememberSignupPhoto(email, photo);
       const supabase = createClient();
       const { data, error: authError } = await supabase.auth.signUp({
         email: email.trim(),
@@ -74,18 +89,21 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
           emailRedirectTo: `${window.location.origin}/auth/check-email`,
         },
       });
-      setSubmitting(false);
-
       if (authError) {
+        setSubmitting(false);
         setError(friendlyAuthError(authError.message));
         return;
       }
 
       // Email confirmation enabled: no session until the link is clicked.
       if (data.session) {
+        if (photo) {
+          try { await applyPendingSignupPhoto(email); } catch { /* Retry from the account page. */ }
+        }
         window.location.assign(nextPath);
         return;
       }
+      setSubmitting(false);
     } catch (err) {
       // Network-level failure — useful message instead of "Failed to fetch".
       setSubmitting(false);
@@ -136,6 +154,20 @@ export function SignUpForm({ nextPath }: { nextPath: string }) {
           required
           maxLength={80}
         />
+      </div>
+
+      <div className="flex items-center gap-4 rounded-xl border border-border/70 bg-surface/40 p-3">
+        <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-gold/40 bg-gold/10 text-gold">
+          {photoPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoPreview} alt="Profile photo preview" className="size-full object-cover" />
+          ) : <CameraIcon className="size-6" aria-hidden="true" />}
+        </div>
+        <div className="min-w-0 space-y-1">
+          <Label htmlFor="sign-up-photo" className="cursor-pointer text-sm font-medium text-gold">Choose profile photo</Label>
+          <Input id="sign-up-photo" type="file" accept="image/jpeg,image/png,image/webp" className="h-auto max-w-full text-xs" onChange={(event) => choosePhoto(event.target.files?.[0] ?? null)} disabled={submitting} />
+          <p className="text-xs text-muted-foreground">Optional · JPG, PNG, or WebP under 5 MB. It saves after you confirm your email and sign in on this device.</p>
+        </div>
       </div>
 
       <div className="space-y-2">

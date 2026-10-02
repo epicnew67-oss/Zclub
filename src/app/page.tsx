@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRightIcon, SearchIcon, VideoIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { ListingCard } from "@/components/browse/listing-card";
+import { PresenceRefresh } from "@/components/browse/presence-refresh";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { HomeFaq } from "@/components/home/home-faq";
@@ -26,6 +27,7 @@ export default async function Home() {
 
   return (
     <>
+      <PresenceRefresh />
       <section className="border-b border-gold/15 bg-[radial-gradient(ellipse_at_top_left,rgba(102,14,18,0.38),transparent_58%)]">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center md:px-6 md:py-20">
           <div className="max-w-2xl space-y-6">

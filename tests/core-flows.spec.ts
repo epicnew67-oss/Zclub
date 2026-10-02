@@ -75,19 +75,31 @@ test("regional wall times convert to UTC and DST gaps or overlaps are rejected",
   expect(zonedWallTimeToUtc("2026-11-01T01:30", "America/Los_Angeles")).toHaveProperty("error");
 });
 
-test("sign-up stores the selected region", async ({ page }) => {
+test("sign-up stores the selected region and profile photo", async ({ page }) => {
   const email = `region-${stamp}@test.local`;
   await page.goto("/auth/sign-up");
   await page.getByLabel("Display name").fill(`Region ${stamp}`);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Your region / time zone").selectOption("Asia/Karachi");
+  await page.locator("#sign-up-photo").setInputFiles({
+    name: "profile.png", mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/R7sAAAAASUVORK5CYII=", "base64"),
+  });
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/auth\/check-email/);
+  const profile = await result(admin.from("profiles").select("id,time_zone").eq("display_name", `Region ${stamp}`).single());
+  expect(profile.time_zone).toBe("Asia/Karachi");
+  const { error: confirmError } = await admin.auth.admin.updateUserById(profile.id, { email_confirm: true });
+  if (confirmError) throw confirmError;
+  await page.goto("/auth/sign-in");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect.poll(async () => {
-    const { data } = await admin.from("profiles").select("time_zone").eq("display_name", `Region ${stamp}`).maybeSingle();
-    return data?.time_zone;
-  }).toBe("Asia/Karachi");
+    const { data } = await admin.from("profiles").select("avatar_url").eq("id", profile.id).single();
+    return data?.avatar_url;
+  }).toMatch(new RegExp(`^${profile.id}/avatar-.*\\.png$`));
 });
 
 test("clearing search cancels the pending debounce", async ({ page }) => {
@@ -142,6 +154,43 @@ test("wallet explains withdrawal threshold without an impossible amount field", 
   await expect(page.getByRole("heading", { name: /Your balance/i })).toBeVisible();
   await expect(page.getByText(/more to request a withdrawal/i)).toBeVisible();
   await expect(page.locator("#payout-amount")).toHaveCount(0);
+});
+
+test("seller dashboard shows wallet balance and buyers see an open seller online", async ({ page, context, browser }) => {
+  await result(admin.rpc("wallet_credit", { _user_id: seller.user.id, _amount: 90, _entry_type: "support_adjustment", _ref_type: "test_fixture", _ref_id: randomUUID(), _description: "Dashboard balance regression", _created_by: null }));
+  await authenticate(context, seller);
+  await page.goto("/seller");
+  await expect(page.getByRole("heading", { name: "Seller dashboard" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open wallet" }).locator("xpath=../..")).toContainText("90");
+  const switcher = page.getByRole("switch", { name: "Online status" });
+  await expect(switcher).toHaveAttribute("aria-checked", "false");
+  const customerContext = await browser.newContext({ baseURL: "http://localhost:3000" });
+  try {
+    const customerPage = await customerContext.newPage();
+    await customerPage.goto(`/listings/${slug}`);
+    await expect(customerPage.getByText("Offline", { exact: true })).toBeVisible();
+    await switcher.click();
+    await expect(switcher).toHaveAttribute("aria-checked", "true");
+    await customerPage.reload();
+    await expect(customerPage.getByText("Available now", { exact: true })).toBeVisible();
+    await result(admin.from("seller_profiles").update({ last_seen_at: new Date(Date.now() - 180_000).toISOString() }).eq("user_id", seller.user.id).select("id").single());
+    await page.goto("/browse");
+    await expect.poll(async () => {
+      const { data } = await admin.from("seller_profiles").select("last_seen_at").eq("user_id", seller.user.id).single();
+      return Boolean(data?.last_seen_at && Date.now() - new Date(data.last_seen_at).getTime() < 90_000);
+    }).toBe(true);
+    await page.goto("/seller");
+    await switcher.click();
+    await expect(switcher).toHaveAttribute("aria-checked", "false");
+    await customerPage.reload();
+    await expect(customerPage.getByText("Offline", { exact: true })).toBeVisible();
+    await switcher.click();
+    await expect(switcher).toHaveAttribute("aria-checked", "true");
+    await customerPage.reload();
+    await expect(customerPage.getByText("Available now", { exact: true })).toBeVisible();
+  } finally {
+    await customerContext.close();
+  }
 });
 
 test("buyer can sign in, book an online seller and join without picking a time", async ({ page }) => {
@@ -298,12 +347,15 @@ test("buyer desktop navigation exposes orders and notifications show their conte
 
 test("seller sees new chat messages and booking status without reloading", async ({ page, context }) => {
   await authenticate(context, seller);
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
   await page.goto(`/orders/${callBookingId}`);
   const text = `New message ${stamp}`;
   await admin.from("booking_messages").insert({ chat_id: callChatId, sender_id: buyer.user.id, body: text });
   await expect(page.getByText(text, { exact: true })).toBeVisible();
   await admin.from("bookings").update({ status: "released" }).eq("id", callBookingId);
   await expect(page.locator('[data-join-call="disabled"]')).toHaveText("Call ended");
+  expect(errors).toEqual([]);
 });
 
 test("released and disputed bookings cannot join even inside the time window", async ({ page, context }) => {
@@ -415,6 +467,25 @@ test("seller can upload a larger public profile photo", async ({ page, context }
   await expect(page.getByText("Seller profile updated.")).toBeVisible();
   const { data } = await admin.from("seller_profiles").select("avatar_url").eq("user_id", seller.user.id).single();
   expect(data?.avatar_url).toMatch(new RegExp(`^${seller.user.id}/avatar-\\d+\\.png$`));
+});
+
+test("account photo updates the seller photo and rejects another user's image", async ({ page, context }) => {
+  await authenticate(context, seller);
+  await page.goto("/account");
+  await page.locator("#account-photo").setInputFiles({
+    name: "new-profile.png", mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/R7sAAAAASUVORK5CYII=", "base64"),
+  });
+  await page.getByRole("button", { name: "Save photo" }).click();
+  await expect(page.getByText("Profile photo updated.")).toBeVisible();
+  const account = await result(admin.from("profiles").select("avatar_url").eq("id", seller.user.id).single());
+  const sellerProfile = await result(admin.from("seller_profiles").select("avatar_url").eq("user_id", seller.user.id).single());
+  expect(account.avatar_url).toMatch(new RegExp(`^${seller.user.id}/avatar-.*\\.png$`));
+  expect(sellerProfile.avatar_url).toBe(account.avatar_url);
+  const otherClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  await otherClient.auth.setSession({ access_token: buyer.access_token, refresh_token: buyer.refresh_token });
+  const { error } = await otherClient.rpc("set_own_profile_photo", { _path: account.avatar_url });
+  expect(error).toBeTruthy();
 });
 
 test("seller can delete a listing without losing booked orders", async ({ page, context }) => {

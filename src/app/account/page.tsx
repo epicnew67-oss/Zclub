@@ -7,7 +7,8 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { SellerApprovedAlert } from "@/components/seller/seller-approved-alert";
 import { TimeZoneSettings } from "@/components/account/time-zone-settings";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ProfilePhotoEditor } from "@/components/account/profile-photo-editor";
+import { isSafeImagePath } from "@/lib/safe-image-path";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,11 +21,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = { title: "Account" };
-
-function initials(name: string, email: string) {
-  const source = name.trim() || email.split("@")[0] || "?";
-  return source.slice(0, 2).toUpperCase();
-}
 
 export default async function AccountPage() {
   if (!isSupabaseConfigured()) {
@@ -72,7 +68,12 @@ export default async function AccountPage() {
   const email = user.email ?? "unknown";
   const displayName =
     profileResult.data?.display_name?.trim() || email.split("@")[0];
-  const roles = (rolesResult.data ?? []).map((row) => row.role);  const balance =
+  const avatarPath = profileResult.data?.avatar_url;
+  const avatarUrl = isSafeImagePath(avatarPath)
+    ? (await supabase.storage.from("seller-avatars").createSignedUrl(avatarPath, 600)).data?.signedUrl ?? null
+    : null;
+  const roles = (rolesResult.data ?? []).map((row) => row.role);
+  const balance =
     typeof balanceResult.data === "number" ? balanceResult.data : 0;
   const verified = Boolean(user.email_confirmed_at);
   const memberSince = profileResult.data?.created_at
@@ -105,21 +106,7 @@ export default async function AccountPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Avatar size="lg">
-                <AvatarFallback className="bg-gold/15 text-gold">
-                  {initials(displayName, email)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">
-                  {displayName}
-                </p>
-                <p className="truncate text-sm text-muted-foreground">
-                  {email}
-                </p>
-              </div>
-            </div>
+            <ProfilePhotoEditor email={email} name={displayName} initialUrl={avatarUrl} />
 
             <Separator />
 
@@ -173,8 +160,7 @@ export default async function AccountPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Token packs and top-ups arrive with the wallet feature. Every
-              change will be an append-only ledger entry.
+              Token purchases and call earnings appear in your wallet.
             </p>
           </CardContent>
         </Card>

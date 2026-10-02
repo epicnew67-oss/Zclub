@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Loader2Icon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { applyPendingSignupPhoto } from "@/lib/profile-photo-client";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ export function SignInForm({ nextPath }: { nextPath: string }) {
         }
         return;
       }
+      try { await applyPendingSignupPhoto(email); } catch { /* Account page retries the photo. */ }
     } catch (err) {
       // Network-level failures (offline, CSP, local stack down) throw
       // before supabase-js can wrap them — surface a useful message.
