@@ -88,48 +88,47 @@
  * Runtime values are injected by <BrandStyle /> (see src/app/layout.tsx).
  */
 :root {
-  --background: #0a0506;
-  --foreground: #f3ece4;
-  --card: #14090c;
-  --card-foreground: #f3ece4;
-  --popover: #241218;
-  --popover-foreground: #f3ece4;
-  --primary: #6b0f16;
-  --primary-foreground: #f3ece4;
-  --secondary: #4a0a10;
-  --secondary-foreground: #f3ece4;
-  --muted: #1d0e12;
-  --muted-foreground: #a89a8c;
-  --accent: #241218;
-  --accent-foreground: #dfc6a4;
+  --background: #0d0a09;
+  --foreground: #f6f0e8;
+  --card: #191411;
+  --card-foreground: #f6f0e8;
+  --popover: #2c211b;
+  --popover-foreground: #f6f0e8;
+  --primary: #660e12;
+  --primary-foreground: #f6f0e8;
+  --secondary: #420a0c;
+  --secondary-foreground: #f6f0e8;
+  --muted: #251d18;
+  --muted-foreground: #b9a99c;
+  --accent: #2c211b;
+  --accent-foreground: #e5cba9;
   --destructive: #e5484d;
-  --border: #2b181e;
-  --input: #3a2128;
-  --ring: #c8a57a;
-  --radius: 0.75rem;
+  --border: #48382e;
+  --input: #695141;
+  --ring: #c2a17b;
+  --radius: 0.45rem;
   --gold: #c2a17b;
-  --gold-soft: #d8bda0;
-  --gold-deep: #876d52;
+  --gold-soft: #e5cba9;
+  --gold-deep: #9e7854;
   --burgundy: #660e12;
-  --burgundy-deep: #44070d;
+  --burgundy-deep: #420a0c;
   --success: #5ba56b;
-  --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
-  --shadow-gold: 0 2px 18px rgba(194, 161, 123, 0.28);
-  --shadow-glow: 0 0 28px -6px rgba(102, 14, 18, 0.62),
-    0 0 70px -22px rgba(194, 161, 123, 0.18);
+  --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.24);
+  --shadow-gold: 0 0 0 1px rgba(194, 161, 123, 0.22);
+  --shadow-glow: 0 18px 45px rgba(0, 0, 0, 0.26);
   --chart-1: #c2a17b;
   --chart-2: #660e12;
   --chart-3: #d8bda0;
   --chart-4: #a89a8c;
   --chart-5: #4a0a10;
-  --sidebar: #14090c;
-  --sidebar-foreground: #f3ece4;
-  --sidebar-primary: #6b0f16;
-  --sidebar-primary-foreground: #f3ece4;
-  --sidebar-accent: #241218;
-  --sidebar-accent-foreground: #dfc6a4;
-  --sidebar-border: #2b181e;
-  --sidebar-ring: #c8a57a;
+  --sidebar: #191411;
+  --sidebar-foreground: #f6f0e8;
+  --sidebar-primary: #660e12;
+  --sidebar-primary-foreground: #f6f0e8;
+  --sidebar-accent: #2c211b;
+  --sidebar-accent-foreground: #e5cba9;
+  --sidebar-border: #48382e;
+  --sidebar-ring: #c2a17b;
 }
 
 @layer base {
@@ -138,6 +137,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image: linear-gradient(90deg, transparent 0, rgba(194,161,123,.025) 50%, transparent 100%);
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -156,14 +156,11 @@
 /* Brand effects */
 
 @utility gold-border {
-  border: 1px solid color-mix(in oklab, var(--gold) 45%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold) 10%, transparent),
-    var(--shadow-gold);
+  border: 1px solid color-mix(in oklab, var(--gold) 42%, transparent);
 }
 
 @utility burgundy-glow {
-  box-shadow: 0 0 26px -6px color-mix(in oklab, var(--burgundy) 60%, transparent),
-    0 0 72px -24px color-mix(in oklab, var(--gold) 22%, transparent);
+  box-shadow: var(--shadow-glow);
 }
 
 @utility gold-hover-glow {
@@ -174,7 +171,40 @@
 
 @layer utilities {
   .gold-hover-glow:hover {
-    box-shadow: var(--shadow-gold);
+    border-color: var(--gold);
+  }
+}
+
+@layer components {
+  .editorial-kicker {
+    color: var(--gold);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+  }
+  .editorial-rule {
+    height: 1px;
+    background: linear-gradient(90deg, var(--gold), color-mix(in srgb, var(--gold) 18%, transparent));
+  }
+  .editorial-image {
+    filter: saturate(.55) contrast(1.1);
+    transition: filter .7s ease, transform 1s cubic-bezier(.2,.8,.2,1);
+  }
+  .editorial-image:hover {
+    filter: saturate(.8) contrast(1.04);
+    transform: scale(1.035);
+  }
+  .editorial-light {
+    --foreground: #211b19;
+    --muted-foreground: #675d55;
+    --gold: #8b4b42;
+    --gold-soft: #6d2b30;
+    background: #efe8df;
+    color: var(--foreground);
+  }
+  .editorial-light .editorial-kicker {
+    color: #7f3a3d;
   }
 }
 

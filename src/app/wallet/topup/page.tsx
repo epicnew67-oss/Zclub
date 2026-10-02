@@ -74,14 +74,14 @@ export default async function TopupPage({
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-10 md:px-6 md:py-16">
-      <header>
-        <h1 className="font-heading text-3xl font-semibold md:text-4xl">
-          Top up <span className="text-gold">tokens</span>
+    <div className="mx-auto w-full max-w-5xl space-y-8 px-5 py-10 md:px-8 md:py-16">
+      <header className="border-b border-gold/25 pb-7">
+        <p className="editorial-kicker">Your account / Tokens</p>
+        <h1 className="mt-4 font-heading text-5xl leading-none font-normal md:text-6xl">
+          Top up <em className="text-gold-soft">tokens.</em>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Pick a pack from the list below, then choose how you&apos;d like to pay. 1
-          PKR = 2 tokens. Card payments are not available.
+          Choose a pack, then choose how to pay. 1 PKR = 2 tokens.
         </p>
         {needed != null && needed > 0 ? (
           <p className="mt-3 inline-flex rounded-full bg-gold/10 px-3 py-1 text-xs font-medium text-gold">

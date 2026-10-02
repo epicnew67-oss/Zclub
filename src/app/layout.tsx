@@ -7,7 +7,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { BrandStyle } from "@/components/brand/brand-style";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { Navbar, type NavbarUser } from "@/components/layout/navbar";
-import { FloatingNavbar } from "@/components/layout/floating-navbar";
 import { Footer } from "@/components/layout/footer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Toaster } from "@/components/ui/sonner";
@@ -110,11 +109,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: brand.logo.favicon, sizes: "any", type: "image/svg+xml" },
-      { url: brand.logo.icon192, sizes: "192x192", type: "image/svg+xml" },
-      { url: brand.logo.icon512, sizes: "512x512", type: "image/svg+xml" },
+      { url: brand.logo.favicon, sizes: "32x32", type: "image/png" },
+      { url: brand.logo.icon192, sizes: "192x192", type: "image/png" },
+      { url: brand.logo.icon512, sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: brand.logo.appleTouchIcon, sizes: "any", type: "image/svg+xml" }],
+    apple: [{ url: brand.logo.appleTouchIcon, sizes: "180x180", type: "image/png" }],
   },
   formatDetection: { telephone: false },
 };
@@ -140,22 +139,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <TooltipProvider delayDuration={200}>
           <LoadingScreen />
           <NavigationSkeleton />
-          {/* Logged-in users keep the full header (balance chip +
-              notifications + avatar + dropdown). Guests get the
-              premium floating pill so the public homepage reads as
-              art-directed rather than as a dashboard chrome. */}
-          {user ? (
-            <Navbar
-              user={user}
-              balance={balance}
-              walletId={walletId}
-              notifications={notifications}
-              unread={unread}
-              roles={roles}
-            />
-          ) : (
-            <FloatingNavbar />
-          )}
+          <Navbar
+            user={user}
+            balance={balance}
+            walletId={walletId}
+            notifications={notifications}
+            unread={unread}
+            roles={roles}
+          />
           <main className="flex-1">{children}</main>
           <Footer />
           {/* Authenticated app shell only — guests never see the

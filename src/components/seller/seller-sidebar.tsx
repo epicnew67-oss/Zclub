@@ -36,12 +36,12 @@ export function SellerSidebar() {
   return (
     <aside
       aria-label="Seller navigation"
-      className="hidden w-60 shrink-0 border-r border-border/70 bg-surface/40 px-4 py-6 md:flex md:flex-col"
+      className="hidden w-60 shrink-0 border-r border-gold/20 bg-surface/65 px-4 py-8 md:flex md:flex-col"
     >
       <div className="mb-6 flex items-center gap-2">
         <Logo variant="mark" size="md" />
-        <span className="text-xs tracking-wider text-muted-foreground uppercase">
-          Seller
+        <span className="text-[10px] font-bold tracking-[.2em] text-gold uppercase">
+          Studio
         </span>
       </div>
 
@@ -57,9 +57,9 @@ export function SellerSidebar() {
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex min-h-10 items-center gap-3 rounded-sm px-3 py-2 text-xs font-semibold tracking-[.08em] uppercase transition-colors",
                 isActive
-                  ? "bg-gold/10 text-gold"
+                  ? "border-l-2 border-gold bg-gold/10 text-gold-soft"
                   : "text-muted-foreground hover:bg-gold/5 hover:text-gold"
               )}
             >
@@ -78,13 +78,13 @@ export function SellerMobileNav() {
   return (
     <nav
       aria-label="Seller navigation (mobile)"
-      className="border-b border-border/70 bg-background/85 px-2 py-2 md:hidden"
+      className="border-b border-gold/20 bg-surface/70 px-4 py-3 md:hidden"
     >
       <div className="flex items-center gap-3">
         <Logo variant="mark" size="sm" />
         <select
           aria-label="Seller section"
-          className="flex h-9 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="flex h-10 w-full rounded-sm border border-input bg-elevated px-3 text-sm text-foreground outline-none focus-visible:border-gold focus-visible:ring-2 focus-visible:ring-gold/30 [&_option]:bg-elevated"
           value={
             items.find((i) =>
               i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`)

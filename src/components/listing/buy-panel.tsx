@@ -46,14 +46,14 @@ export function BuyPanel({ listing, signedIn }: { listing: BrowseListingDetail; 
   }
 
   return (
-    <Card variant="gold" className="space-y-5 p-5 md:sticky md:top-20" data-buy-panel>
+    <Card variant="gold" className="space-y-6 p-5 md:sticky md:top-24 md:p-6" data-buy-panel>
       <div className="flex items-start justify-between gap-4">
-        <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Video call</p><p className="mt-1 font-heading text-3xl font-semibold text-gold">{listing.price_tokens.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">tokens</span></p></div>
-        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${status === "available" ? "border-success/40 bg-success/10 text-success" : status === "in_call" ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground"}`}>
+        <div><p className="editorial-kicker">Private video call</p><p className="mt-2 font-heading text-4xl leading-none text-gold-soft">{listing.price_tokens.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">tokens</span></p></div>
+        <span className={`rounded-sm border px-2.5 py-1 text-[10px] font-semibold tracking-[.08em] uppercase ${status === "available" ? "border-success/40 bg-success/10 text-success" : status === "in_call" ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground"}`}>
           {status === "available" ? "● Available now" : status === "in_call" ? "● In a call" : status === "booked" ? "● Booked" : "● Offline"}
         </span>
       </div>
-      <ul className="space-y-2 text-sm text-foreground/90">
+      <ul className="space-y-3 border-y border-gold/20 py-5 text-sm text-foreground/80">
         <li className="flex items-center gap-2"><VideoIcon className="size-4 text-gold" /> Join after booking</li>
         <li className="flex items-center gap-2"><ShieldCheckIcon className="size-4 text-gold" /> Tokens held until call completes</li>
         <li className="flex items-center gap-2"><WalletIcon className="size-4 text-gold" /> Full refund if cancelled before anyone joins</li>

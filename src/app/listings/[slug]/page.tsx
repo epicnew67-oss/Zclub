@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { BadgeCheckIcon, StarIcon } from "lucide-react";
+import { BadgeCheckIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
@@ -61,8 +61,8 @@ export default async function ListingDetailPage({
   const signedIn = Boolean(user);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 md:px-6 md:py-12">
-      <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-10 md:px-8 md:py-16">
+      <nav aria-label="Breadcrumb" className="text-[10px] font-semibold tracking-[.12em] text-muted-foreground uppercase">
         <Link href="/" className="hover:text-gold">Home</Link>
         <span className="mx-1.5">/</span>
         <Link href="/browse" className="hover:text-gold">Browse</Link>
@@ -79,9 +79,10 @@ export default async function ListingDetailPage({
         ) : null}
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="flex min-w-0 flex-col gap-8">
-          <header className="space-y-3">
+          <header className="space-y-5 border-b border-gold/25 pb-7">
+            <p className="editorial-kicker">Private call / The collection</p>
             <div className="flex flex-wrap items-center gap-2">
               {listing.category ? (
                 <Badge variant="outline" className="border-gold/40">
@@ -92,7 +93,7 @@ export default async function ListingDetailPage({
                 <Badge variant="success">Verified</Badge>
               ) : null}
             </div>
-            <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
+            <h1 className="max-w-3xl font-heading text-5xl leading-[.95] font-normal tracking-tight md:text-7xl">
               {listing.title}
             </h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -115,8 +116,9 @@ export default async function ListingDetailPage({
 
           <Separator className="bg-gold/15" />
 
-          <section className="space-y-3">
-            <h2 className="font-heading text-xl text-foreground">About this call</h2>
+          <section className="space-y-5 py-2">
+            <p className="editorial-kicker">The details</p>
+            <h2 className="font-heading text-3xl text-foreground">About this call</h2>
             {listing.description ? (
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                 {listing.description}
@@ -128,23 +130,17 @@ export default async function ListingDetailPage({
             )}
           </section>
 
-          <Card variant="glow" className="p-5">
+          <Card variant="gold" className="p-5">
             <CardContent className="space-y-2 px-0">
-              <h2 className="font-heading text-lg text-foreground">At a glance</h2>
-              <ul className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-                <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
+              <h2 className="font-heading text-2xl text-foreground">At a glance</h2>
+              <ul className="grid grid-cols-2 gap-3 text-sm">
+                <li className="border-t border-gold/25 py-3">
                   <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Price</p>
                   <p className="mt-0.5 font-medium text-gold">{listing.price_tokens.toLocaleString()} tokens</p>
                 </li>
-                <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
+                <li className="border-t border-gold/25 py-3">
                   <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Seller</p>
                   <p className="mt-0.5 font-medium text-foreground">{listing.seller.presence === "available" ? "Available now" : listing.seller.presence === "in_call" ? "In a call" : listing.seller.presence === "booked" ? "Booked" : "Offline"}</p>
-                </li>
-                <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
-                  <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Rating</p>
-                  <p className="mt-0.5 flex items-center gap-1 font-medium text-foreground">
-                    <StarIcon className="size-3.5 text-gold" /> New
-                  </p>
                 </li>
               </ul>
             </CardContent>

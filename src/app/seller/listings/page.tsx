@@ -6,6 +6,7 @@ import { listSellerListings, type ListingStatus } from "@/lib/listings";
 import { SubmitListingButton } from "@/components/seller/submit-listing-button";
 import { ArchiveListingButton } from "@/components/seller/archive-listing-button";
 import { ListingVisibilityButton } from "@/components/seller/listing-visibility-button";
+import { Logo } from "@/components/brand/Logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,19 +65,13 @@ export default async function SellerListingsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-5 border-b border-gold/25 pb-6">
         <div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            <span className="text-gold">Listings</span>
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create a listing, upload photos, and submit it for review. First listing always needs admin approval.
-          </p>
+          <p className="editorial-kicker">Seller studio / Your catalog</p>
+          <h1 className="mt-3 font-heading text-4xl font-normal tracking-tight md:text-5xl">Your <em className="text-gold-soft">listings.</em></h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Create a listing, add photos, and submit it for review. Buyers can book approved listings while you are online.</p>
         </div>
-        <Button
-          asChild
-          className="bg-burgundy text-foreground hover:bg-burgundy/90 shadow-glow"
-        >
+        <Button asChild>
           <Link href="/seller/listings/new">New listing</Link>
         </Button>
       </div>
@@ -92,7 +87,6 @@ export default async function SellerListingsPage() {
           <CardContent>
             <Button
               asChild
-              className="bg-burgundy text-foreground hover:bg-burgundy/90 shadow-glow"
             >
               <Link href="/seller/listings/new">Create your first listing</Link>
             </Button>
@@ -103,7 +97,7 @@ export default async function SellerListingsPage() {
           {listings.map((listing) => {
             const cover = listing.photos[0]?.url ?? null;
             return (
-              <Card key={listing.id} variant="glow" className="overflow-hidden">
+              <Card key={listing.id} className="overflow-hidden">
                 <div className="aspect-[16/9] w-full overflow-hidden border-b border-border/70 bg-elevated">
                   {cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -113,8 +107,9 @@ export default async function SellerListingsPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                      No photo
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-background/70 text-xs text-muted-foreground">
+                      <Logo variant="mark" size="xl" />
+                      <span className="editorial-kicker">Photo coming soon</span>
                     </div>
                   )}
                 </div>

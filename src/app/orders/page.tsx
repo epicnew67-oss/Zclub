@@ -8,7 +8,6 @@ import { LocalDateTime } from "@/components/local-date-time";
 import { AuthCard } from "@/components/auth/auth-card";
 import { BalanceChip } from "@/components/wallet/balance-chip";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,12 +47,12 @@ export default async function OrdersPage() {
   const balance = typeof balanceResult === "number" ? balanceResult : 0;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-6 md:py-12">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto w-full max-w-6xl space-y-8 px-5 py-10 md:px-8 md:py-16">
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-gold/25 pb-7">
         <div>
-          <Badge variant="gold-outline">Orders</Badge>
-          <h1 className="mt-3 font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-            Your <span className="text-gold">orders</span>
+          <p className="editorial-kicker">Your account / Calls</p>
+          <h1 className="mt-4 font-heading text-5xl leading-none font-normal md:text-6xl">
+            Your <em className="text-gold-soft">orders.</em>
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Every call you&apos;ve booked. Open one to chat, join your call, or manage a booking that has not started.
@@ -92,7 +91,7 @@ export default async function OrdersPage() {
             <li key={order.id}>
               <Link
                 href={`/orders/${order.id}`}
-                className="group block rounded-xl border border-border/70 bg-surface/40 p-4 transition-colors hover:border-gold/40 hover:bg-gold/5"
+                className="group block rounded-sm border border-border/70 bg-surface/70 p-5 transition-colors hover:border-gold/50 hover:bg-gold/5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 space-y-1">

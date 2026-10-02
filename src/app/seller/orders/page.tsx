@@ -6,10 +6,8 @@ import { requireUser } from "@/lib/auth";
 import { getSellerStatus } from "@/lib/seller";
 import { listSellerOrders } from "@/lib/bookings";
 import { LocalDateTime } from "@/components/local-date-time";
-import { SellerSidebar, SellerMobileNav } from "@/components/seller/seller-sidebar";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { AuthCard } from "@/components/auth/auth-card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -52,27 +50,24 @@ export default async function SellerOrdersPage() {
   const balance = typeof balanceResult === "number" ? balanceResult : 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-0 md:flex-row md:px-4 md:py-8">
-      <SellerSidebar />
-      <main className="min-w-0 flex-1 space-y-6 px-4 py-6 md:px-6 md:py-0">
-        <SellerMobileNav />
+    <div className="mx-auto w-full max-w-6xl space-y-7 px-5 py-10 md:px-8 md:py-16">
 
-        <header className="flex flex-wrap items-end justify-between gap-3">
+        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-gold/25 pb-7">
           <div>
-            <Badge variant="gold-outline">Seller orders</Badge>
-            <h1 className="mt-3 font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-              Your <span className="text-gold">calls</span>
+            <p className="editorial-kicker">Seller studio / Calls</p>
+            <h1 className="mt-4 font-heading text-5xl leading-none font-normal md:text-6xl">
+              Your <em className="text-gold-soft">calls.</em>
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Bookings on your listings. Open one to chat with the buyer or
               join the video call. Earnings arrive automatically when it ends.
             </p>
           </div>
-          <div className="rounded-full border border-gold/40 bg-gold/5 px-4 py-1.5 text-sm">
+          <div className="rounded-sm border border-gold/40 bg-gold/5 px-4 py-2 text-sm">
             <span className="font-medium tabular-nums text-gold">
               {balance.toLocaleString()}
             </span>{" "}
-            <span className="text-xs text-muted-foreground">tokens earned</span>
+            <span className="text-xs text-muted-foreground">tokens</span>
           </div>
         </header>
 
@@ -103,7 +98,7 @@ export default async function SellerOrdersPage() {
               <li key={order.id}>
                 <Link
                   href={`/orders/${order.id}`}
-                  className="group block rounded-xl border border-border/70 bg-surface/40 p-4 transition-colors hover:border-gold/40 hover:bg-gold/5"
+                  className="group block rounded-sm border border-border/70 bg-surface/70 p-5 transition-colors hover:border-gold/50 hover:bg-gold/5"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 space-y-1">
@@ -131,7 +126,6 @@ export default async function SellerOrdersPage() {
             ))}
           </ul>
         )}
-      </main>
     </div>
   );
 }

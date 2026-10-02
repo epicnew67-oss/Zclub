@@ -1,104 +1,35 @@
 import Link from "next/link";
-import { brand } from "@/lib/brand";
+import { ArrowUpRightIcon } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import { Separator } from "@/components/ui/separator";
+import { brand } from "@/lib/brand";
 
-/**
- * Footer links — audited. Every entry either points at a real route or is
- * explicitly marked `soon` (rendered as subdued, non-interactive text with
- * a "Soon" tag). No live-looking link ever 404s or does nothing.
- */
-type FooterLink = { label: string; href: string } | { label: string; soon: true };
-
-const columns: Array<{ title: string; links: FooterLink[] }> = [
-  {
-    title: "Marketplace",
-    links: [
-      { label: "Browse listings", href: "/browse" },
-      { label: "Become a seller", href: "/become-a-seller" },
-      { label: "Token packs", href: "/wallet/topup" },
-      { label: "Safety & trust", soon: true },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "My account", href: "/account" },
-      { label: "My orders", href: "/orders" },
-      { label: "Wallet", href: "/wallet" },
-      { label: "Notifications", href: "/notifications" },
-    ],
-  },
-  {
-    title: "Support",
-    links: [
-      { label: "Help center", soon: true },
-      { label: "Terms of service", soon: true },
-      { label: "Privacy policy", soon: true },
-      { label: "Contact support", soon: true },
-    ],
-  },
+const links = [
+  { label: "Browse calls", href: "/browse" },
+  { label: "Buy tokens", href: "/wallet/topup" },
+  { label: "Become a seller", href: "/become-a-seller" },
+  { label: "My orders", href: "/orders" },
+  { label: "Wallet", href: "/wallet" },
+  { label: "My account", href: "/account" },
 ];
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/70 bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
-          <div className="space-y-4">
-            <Link href="/" aria-label={`${brand.name} — home`}>
-              <Logo size="md" />
-            </Link>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {brand.description}
-            </p>
+    <footer className="border-t border-gold/25 bg-surface/65">
+      <div className="mx-auto max-w-7xl px-5 pt-14 pb-7 md:px-8 md:pt-20">
+        <div className="grid gap-12 border-b border-gold/25 pb-14 md:grid-cols-[1.2fr_1fr] md:pb-20">
+          <div>
+            <p className="editorial-kicker">The private room</p>
+            <Link href="/" aria-label={`${brand.name} — home`} className="mt-5 inline-block"><Logo size="lg" /></Link>
+            <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">{brand.description}</p>
           </div>
-
-          {columns.map((column) => (
-            <nav
-              key={column.title}
-              aria-label={column.title}
-              className="space-y-4"
-            >
-              <h3 className="text-sm font-semibold text-foreground">
-                {column.title}
-              </h3>
-              <ul className="space-y-2.5 text-sm">
-                {column.links.map((link) => (
-                  <li key={link.label}>
-                    {"href" in link ? (
-                      <Link
-                        href={link.href}
-                        className="text-muted-foreground transition-colors hover:text-gold"
-                      >
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <span
-                        aria-disabled="true"
-                        title="Coming soon"
-                        className="inline-flex cursor-default items-center gap-2 text-muted-foreground/60"
-                      >
-                        {link.label}
-                        <span className="rounded-full border border-border/70 px-1.5 py-0.5 text-[9px] tracking-wider uppercase text-muted-foreground/70">
-                          Soon
-                        </span>
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-4 self-end">
+            {links.map((link) => <Link key={link.href} href={link.href} className="group inline-flex items-center justify-between gap-2 border-b border-gold/15 pb-2 text-sm text-foreground/80 transition-colors hover:border-gold hover:text-gold-soft">{link.label}<ArrowUpRightIcon className="size-3.5 shrink-0 text-gold opacity-0 transition-opacity group-hover:opacity-100" /></Link>)}
+          </nav>
         </div>
-
-        <Separator className="my-8 bg-border/70" />
-
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} {brand.name} · {brand.domain} · Every
-          payment moves through an append-only ledger — balances are earned,
-          never overwritten.
-        </p>
+        <div className="flex flex-wrap justify-between gap-3 pt-6 text-[10px] font-medium tracking-[.12em] text-muted-foreground uppercase">
+          <span>© {new Date().getFullYear()} {brand.name} · {brand.domain}</span>
+          <span>Private calls · Booked with tokens</span>
+        </div>
       </div>
     </footer>
   );

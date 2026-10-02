@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { cn } from "cn";
+import { Logo } from "@/components/brand/Logo";
 
 export type GalleryPhoto = {
   id: string;
@@ -36,10 +37,11 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
   if (sorted.length === 0) {
     return (
       <div
-        className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-gold/20 bg-[linear-gradient(160deg,#1a0a0c_0%,#660e12_55%,#0a0506_100%)]"
+        className="relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-4 overflow-hidden border border-gold/25 bg-elevated"
         aria-label="No photos uploaded yet"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(194,161,123,0.22),transparent_55%)]" />
+        <Logo variant="mark" size="xl" className="opacity-70" />
+        <span className="editorial-kicker">Private call / Preview to come</span>
       </div>
     );
   }
@@ -49,7 +51,7 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
   return (
     <div className="flex flex-col gap-3" data-gallery>
       <div
-        className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-gold/20 bg-surface/40"
+        className="relative aspect-[4/3] w-full overflow-hidden border border-gold/25 bg-surface/40"
         tabIndex={0}
         aria-roledescription="image carousel"
         aria-label={`Listing photo ${active + 1} of ${sorted.length}`}
@@ -104,7 +106,7 @@ export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
                 aria-current={i === active ? "true" : undefined}
                 onClick={() => setActive(i)}
                 className={cn(
-                  "relative aspect-square w-full overflow-hidden rounded-lg border transition-all duration-200",
+                  "relative aspect-square w-full overflow-hidden rounded-sm border transition-colors duration-200",
                   i === active
                     ? "border-gold/80 shadow-gold"
                     : "border-border/70 hover:border-gold/40"

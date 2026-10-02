@@ -16,5 +16,5 @@ export default async function SellerProfilePage() {
   const { data: avatar } = isSafeImagePath(profile.avatar_url)
     ? await admin.storage.from("seller-avatars").createSignedUrl(profile.avatar_url, 600)
     : { data: null };
-  return <div className="mx-auto max-w-3xl px-4 py-8 md:px-6"><h1 className="font-heading text-3xl text-gold">Seller profile</h1><p className="mt-2 text-sm text-muted-foreground">Your photo and details appear beside every service you list.</p><SellerProfileEditor initial={{ displayName: profile.display_name, tagline: profile.tagline ?? "", bio: profile.bio ?? "", avatarUrl: avatar?.signedUrl ?? null }} /></div>;
+  return <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12"><div className="mb-7 border-b border-gold/25 pb-6"><p className="editorial-kicker">Seller studio / Your identity</p><h1 className="mt-3 font-heading text-4xl font-normal tracking-tight md:text-5xl">Your <em className="text-gold-soft">profile.</em></h1><p className="mt-3 text-sm text-muted-foreground">Your photo and details appear beside every call you list.</p></div><SellerProfileEditor initial={{ displayName: profile.display_name, tagline: profile.tagline ?? "", bio: profile.bio ?? "", avatarUrl: avatar?.signedUrl ?? null }} /></div>;
 }

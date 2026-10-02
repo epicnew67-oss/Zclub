@@ -1,69 +1,30 @@
-import { CalendarPlusIcon, CoinsIcon, PhoneIcon, SparklesIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowRightIcon } from "lucide-react";
 import { RevealSection } from "@/components/home/reveal-section";
 
 const steps = [
-  {
-    icon: SparklesIcon,
-    title: "Browse",
-    description: "Find a seller whose vibe matches what you're after.",
-  },
-  {
-    icon: CalendarPlusIcon,
-    title: "Book a slot",
-    description: "Pick a time that works. Tokens are escrowed, not released yet.",
-  },
-  {
-    icon: PhoneIcon,
-    title: "Connect",
-    description: "Join the 1:1 video call at the agreed time.",
-  },
-  {
-    icon: CoinsIcon,
-    title: "Released",
-    description: "After the call completes, tokens are released to the seller.",
-  },
+  { number: "01", title: "Find someone online", description: "Browse live listings and choose a seller who is available now." },
+  { number: "02", title: "Book with tokens", description: "The price is clear before you confirm. Your tokens are held for the call." },
+  { number: "03", title: "Join your private call", description: "Meet one to one. After a completed call, the seller receives their share." },
 ];
 
 export function HowItWorks() {
   return (
-    <RevealSection
-      id="how-it-works"
-      target="[data-reveal]"
-      className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6 md:py-14"
-    >
-      <div data-reveal className="mb-8 max-w-2xl">
-        <h2 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-          How it <span className="text-gold">works</span>
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Four steps from browse to release. Tokens stay safe until the call is done.
-        </p>
+    <RevealSection id="how-it-works" target="[data-reveal]" className="mx-auto max-w-7xl px-5 py-16 md:px-8 md:py-24">
+      <div data-reveal className="mb-10 grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
+        <div><p className="editorial-kicker">03 / The experience</p><h2 className="mt-3 font-heading text-4xl leading-none md:text-6xl">Simple by <em className="text-gold-soft">design.</em></h2></div>
+        <p className="max-w-xs text-sm leading-6 text-muted-foreground">From browsing to the call, everything happens in your account.</p>
       </div>
-      <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step, i) => {
-          const Icon = step.icon;
-          return (
-            <li
-              key={step.title}
-              data-reveal
-              className="relative rounded-xl border border-gold/20 bg-surface/40 p-5"
-            >
-              <span className="absolute -top-3 left-5 grid size-7 place-items-center rounded-full border border-gold/40 bg-background font-heading text-xs text-gold">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div className="mt-3 flex items-center gap-2">
-                <Icon className="size-4 text-gold" />
-                <span className="font-heading text-base text-foreground">
-                  {step.title}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {step.description}
-              </p>
-            </li>
-          );
-        })}
+      <ol className="grid border-y border-gold/25 md:grid-cols-3">
+        {steps.map((step) => (
+          <li key={step.number} data-reveal className="min-h-56 border-b border-gold/25 px-1 py-8 last:border-b-0 md:border-r md:border-b-0 md:px-8 md:first:pl-1 md:last:border-r-0">
+            <span className="text-xs font-bold tracking-[.18em] text-gold">{step.number} / 03</span>
+            <h3 className="mt-9 font-heading text-2xl leading-tight md:text-3xl">{step.title}</h3>
+            <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">{step.description}</p>
+          </li>
+        ))}
       </ol>
+      <Link href="/browse" className="mt-7 inline-flex items-center gap-2 text-xs font-bold tracking-[.15em] text-gold uppercase hover:text-gold-soft">Browse live calls <ArrowRightIcon className="size-4" /></Link>
     </RevealSection>
   );
 }

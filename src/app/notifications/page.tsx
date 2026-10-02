@@ -34,10 +34,11 @@ export default async function NotificationsPage() {
   const rows = await listNotifications(100);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-10 md:px-6 md:py-16">
-      <header className="mb-6">
-        <h1 className="font-heading text-3xl font-semibold md:text-4xl">
-          <span className="text-gold">Notifications</span>
+    <div className="mx-auto w-full max-w-3xl px-5 py-10 md:px-8 md:py-16">
+      <header className="mb-7 border-b border-gold/25 pb-7">
+        <p className="editorial-kicker">Your account / Updates</p>
+        <h1 className="mt-4 font-heading text-5xl leading-none font-normal md:text-6xl">
+          Your <em className="text-gold-soft">notifications.</em>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Bookings, calls, payments, application results. New entries arrive in real time.

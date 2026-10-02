@@ -7,7 +7,6 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { LedgerHistory, type LedgerRow } from "@/components/wallet/ledger-history";
 import { TopupHistory, type TopupHistoryRow } from "@/components/wallet/topup-history";
 import { SellerWalletPanel } from "@/components/wallet/seller-wallet-panel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -120,11 +119,11 @@ export default async function WalletPage({
   const topups = (topupsResult.data ?? []) as TopupHistoryRow[];
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10 md:px-6 md:py-16">
-      <header>
-        <Badge variant="gold-outline">Wallet</Badge>
-        <h1 className="mt-3 font-heading text-3xl font-semibold md:text-4xl">
-          Your <span className="text-gold">balance</span>
+    <div className="mx-auto w-full max-w-6xl space-y-8 px-5 py-10 md:px-8 md:py-16">
+      <header className="border-b border-gold/25 pb-7">
+        <p className="editorial-kicker">Your account / Wallet</p>
+        <h1 className="mt-4 font-heading text-5xl leading-none font-normal md:text-6xl">
+          Your <em className="text-gold-soft">balance.</em>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Tokens from purchases, refunds, and completed calls appear here.

@@ -21,9 +21,9 @@ export function AuthCard({
   footer?: ReactNode;
 }) {
   return (
-    <Card variant="gold" className="w-full rounded-2xl p-1 md:p-2">
+    <Card variant="gold" className="w-full border-gold/35 p-1 md:p-2">
       <CardHeader className="p-4 md:p-5">
-        <CardTitle className="font-heading text-2xl">{title}</CardTitle>
+        <CardTitle className="font-heading text-3xl font-normal">{title}</CardTitle>
         {subtitle ? <CardDescription>{subtitle}</CardDescription> : null}
       </CardHeader>
       <CardContent className="px-4 pb-4 md:px-5 md:pb-5">{children}</CardContent>

@@ -84,13 +84,14 @@ export default async function AccountPage() {
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10 md:px-6 md:py-16">
+    <div className="mx-auto w-full max-w-5xl px-5 py-10 md:px-8 md:py-16">
       {showSellerApprovedAlert && application ? (
         <SellerApprovedAlert applicationId={application.id} />
       ) : null}
-      <header className="mb-8">
-        <h1 className="font-heading text-3xl font-semibold md:text-4xl">
-          Your account
+      <header className="mb-8 border-b border-gold/25 pb-7">
+        <p className="editorial-kicker">Your account / Profile</p>
+        <h1 className="mt-4 font-heading text-5xl leading-none font-normal md:text-6xl">
+          Your <em className="text-gold-soft">account.</em>
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Signed in as {email}

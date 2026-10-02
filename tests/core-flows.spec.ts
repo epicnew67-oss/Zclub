@@ -480,7 +480,7 @@ test("seller orders use the saved region rather than the device region", async (
 test("seller can upload a larger public profile photo", async ({ page, context }) => {
   await authenticate(context, seller);
   await page.goto("/seller/profile");
-  await expect(page.getByRole("heading", { name: "Seller profile" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your profile." })).toBeVisible();
   await page.locator('#seller-photo').setInputFiles({
     name: "avatar.png", mimeType: "image/png",
     buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/R7sAAAAASUVORK5CYII=", "base64"),

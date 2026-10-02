@@ -40,13 +40,10 @@ export default async function NewListingPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
-      <div>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          <span className="text-gold">New listing</span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Save a draft, upload up to 6 photos, then submit for review. Your first listing always needs admin approval.
-        </p>
+      <div className="border-b border-gold/25 pb-6">
+        <p className="editorial-kicker">Seller studio / New listing</p>
+        <h1 className="mt-3 font-heading text-4xl font-normal tracking-tight md:text-5xl">Create a <em className="text-gold-soft">listing.</em></h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Save a draft, add up to six photos, then submit it for review.</p>
       </div>
       <ListingForm categories={categories} mode={{ kind: "create" }} />
     </div>

@@ -29,7 +29,7 @@ export function BrowseToolbar({
   return (
     <div
       data-toolbar
-      className="flex flex-col gap-3 rounded-xl border border-gold/20 bg-surface/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 border-y border-gold/25 bg-surface/50 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"
     >
       <SearchInput initial={initialSearch} className="flex-1 sm:max-w-sm" />
       <div className="flex flex-wrap items-center gap-2">

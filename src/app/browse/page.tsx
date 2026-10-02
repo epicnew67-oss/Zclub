@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRightIcon } from "lucide-react";
 import { ListingCard } from "@/components/browse/listing-card";
 import { BrowseToolbar } from "@/components/browse/browse-toolbar";
@@ -64,15 +65,16 @@ export default async function BrowsePage({
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 md:px-6 md:py-12">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-10 md:px-8 md:py-16">
       <PresenceRefresh />
-      <header>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-          <span className="text-gold">Browse calls</span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Find a seller, compare calls, and reserve an available time with tokens.
-        </p>
+      <header className="relative flex min-h-64 items-end overflow-hidden border border-gold/25 bg-elevated px-6 py-8 md:min-h-72 md:px-10 md:py-10">
+        <Image src="/editorial/editorial-shadow.webp" alt="" fill priority sizes="(max-width: 768px) 100vw, 1200px" className="object-cover object-[50%_40%] opacity-45" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
+        <div className="relative z-10 max-w-2xl">
+          <p className="editorial-kicker">The collection / All calls</p>
+          <h1 className="mt-4 font-heading text-5xl leading-none font-normal tracking-tight md:text-7xl">Find your <em className="text-gold-soft">moment.</em></h1>
+          <p className="mt-5 max-w-lg text-sm leading-6 text-foreground/75">Browse real listings, see who is online, and book a private call with tokens.</p>
+        </div>
       </header>
 
       <BrowseToolbar

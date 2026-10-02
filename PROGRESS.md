@@ -7,6 +7,14 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: editorial frontend redesign (2026-10-03)
+
+- Rebuilt the homepage, browse cards, listing detail, wallet, top-up, orders, account, notifications, seller dashboard/catalog/profile/orders, authentication shell, and shared navigation/footer around an editorial charcoal, ivory, gold, and oxblood visual system. Existing booking and payment actions remain server-owned.
+- Used the three photos supplied in the project folder as optimized WebP assets. Extracted the monogram from the supplied luxury SVG logo into small PNG assets for the site header, favicon, PWA, and empty listing art. The original supplied files remain untouched and untracked.
+- Added gentle GSAP image movement and entrance animation to the homepage, with reduced-motion support. The light category section and cleaner notification rows improve contrast. Reveal sections now stay visible after scrolling into view.
+- Higgsfield CLI and connected app are authenticated, but the current free workspace has 0 credits and 0 free generations. A new Higgsfield cinematic video could not be rendered. The site uses motion on the supplied imagery until the account has generation credits.
+- Production build passes. ESLint has 15 existing warnings and no errors. Backend tests pass after updating PWA assertions for the new icons/colors. The browser suite passed 28/31 on its first run; two failures came from a tablet overflow and an outdated heading assertion, and the cancellation flow passed on rerun. All three failed scenarios then passed in a focused rerun. Visual screenshots at desktop/mobile widths showed no page errors or horizontal overflow.
+
 ## Phase: top-up navigation and wallet history (2026-10-03)
 
 - Selecting a token pack scrolls to Continue; moving to payment method or crypto checkout scrolls to the new section. Selecting a coin brings its payment panel into view. GSAP scrolls respect reduced-motion settings.

@@ -98,21 +98,21 @@ async function caseA_pwaAssets() {
   // File existence on disk.
   const swPath = `${repo}/public/sw.js`;
   const manifestPath = `${repo}/public/manifest.webmanifest`;
-  const iconPath = `${repo}/public/brand/icon.svg`;
-  const maskablePath = `${repo}/public/brand/icon-maskable.svg`;
-  const faviconPath = `${repo}/public/brand/favicon.svg`;
+  const iconPath = `${repo}/public/brand/crest-icon-192.png`;
+  const maskablePath = `${repo}/public/brand/crest-maskable-512.png`;
+  const faviconPath = `${repo}/public/brand/crest-favicon.png`;
   check("A.1 sw.js on disk", existsSync(swPath));
   check("A.2 manifest.webmanifest on disk", existsSync(manifestPath));
-  check("A.3 icon.svg on disk", existsSync(iconPath));
-  check("A.4 icon-maskable.svg on disk", existsSync(maskablePath));
-  check("A.5 favicon.svg on disk", existsSync(faviconPath));
+  check("A.3 app icon on disk", existsSync(iconPath));
+  check("A.4 maskable icon on disk", existsSync(maskablePath));
+  check("A.5 favicon on disk", existsSync(faviconPath));
 
   // Manifest shape (parsed from disk — no HTTP server required).
   if (existsSync(manifestPath)) {
     const m = JSON.parse(readFileSync(manifestPath, "utf8"));
     check("A.6 manifest name = StripClub", m.name === "StripClub", JSON.stringify(m.name));
-    check("A.7 manifest splash = #0A0506", m.background_color === "#0A0506", JSON.stringify(m.background_color));
-    check("A.8 manifest theme_color = #0A0506", m.theme_color === "#0A0506", JSON.stringify(m.theme_color));
+    check("A.7 manifest splash matches brand", m.background_color === "#0D0A09", JSON.stringify(m.background_color));
+    check("A.8 manifest theme matches brand", m.theme_color === "#0D0A09", JSON.stringify(m.theme_color));
     check("A.9 manifest start_url = /", m.start_url === "/", JSON.stringify(m.start_url));
     check("A.10 manifest has icons array", Array.isArray(m.icons) && m.icons.length > 0, JSON.stringify(m.icons?.length));
     check("A.11 at least one maskable icon", (m.icons ?? []).some((i) => i.purpose === "maskable"));
@@ -127,7 +127,7 @@ async function caseA_pwaAssets() {
     const src = readFileSync(swPath, "utf8");
     check("A.13 sw.js has 'push' handler", src.includes("addEventListener(\"push\""));
     check("A.14 sw.js has 'notificationclick' handler", src.includes("addEventListener(\"notificationclick\""));
-    check("A.15 sw.js references /brand/icon.svg", src.includes("/brand/icon.svg"));
+    check("A.15 sw.js references current crest", src.includes("/brand/crest-icon-192.png"));
   }
 }
 

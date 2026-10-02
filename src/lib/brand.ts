@@ -7,38 +7,37 @@
  * maps those variables to utilities in src/app/globals.css (@theme inline).
  *
  * Nothing brand-related is hardcoded in pages — change a value here and the
- * whole site updates. The logo itself lives as inline SVG inside <Logo />
- * and reads its colors from brand.colors so the entire system stays in
- * sync. App-icon / favicon SVGs in /public/brand/ mirror the same paths.
+ * whole site updates. The crest is extracted from the supplied logo art
+ * and served as optimized PNG assets in /public/brand/.
  */
 
 export const brand = {
   name: "StripClub",
   shortName: "SC",
   domain: "stripclubonline.store",
-  tagline: "Exclusive 1:1 video moments, booked in tokens.",
+  tagline: "Private calls. Your moment.",
   description:
     "StripClub is a marketplace for on-demand 1:1 video calls. Buy tokens, choose an available seller, and join your call.",
   colors: {
     // Surfaces
-    bg: "#0A0506", // near-black base (subtle burgundy glow applied in layout)
-    surface: "#14090C", // cards
-    elevated: "#1D0E12", // raised panels / inputs
-    overlay: "#241218", // popovers, modals, menus
-    onGold: "#17100B", // dark text/icons on gold surfaces
+    bg: "#0D0A09",
+    surface: "#191411",
+    elevated: "#251D18",
+    overlay: "#2C211B",
+    onGold: "#19110C",
     // Text
-    text: "#F3ECE4", // off-white
-    textMuted: "#A89A8C", // muted
+    text: "#F6F0E8",
+    textMuted: "#B9A99C",
     // Lines
-    line: "#2B181E", // borders / dividers
-    lineStrong: "#3A2128", // input borders
+    line: "#48382E",
+    lineStrong: "#695141",
     // Accents — gold is the accent, burgundy is for primary actions.
     // Sampled from the production StripClub logo artwork.
-    gold: "#c2a17b",
-    goldSoft: "#d8bda0",
-    goldDeep: "#876d52",
-    burgundy: "#660e12",
-    burgundyDeep: "#44070d",
+    gold: "#C2A17B",
+    goldSoft: "#E5CBA9",
+    goldDeep: "#9E7854",
+    burgundy: "#660E12",
+    burgundyDeep: "#420A0C",
     // Status
     success: "#5BA56B",
     danger: "#E5484D",
@@ -49,30 +48,30 @@ export const brand = {
   },
   /** Logo asset paths — the only place file paths live. */
   logo: {
-    favicon: "/brand/favicon.svg",
-    appleTouchIcon: "/brand/icon.svg",
-    icon192: "/brand/icon.svg",
-    icon512: "/brand/icon.svg",
-    maskable: "/brand/icon-maskable.svg",
-    mark: "/brand/logo-mark.svg",
+    favicon: "/brand/crest-favicon.png",
+    appleTouchIcon: "/brand/crest-apple-touch.png",
+    icon192: "/brand/crest-icon-192.png",
+    icon512: "/brand/crest-icon-512.png",
+    maskable: "/brand/crest-maskable-512.png",
+    mark: "/brand/crest.png",
   },
   pwa: {
     manifest: "/manifest.webmanifest",
     serviceWorker: "/sw.js",
-    splashColor: "#0A0506",
-    themeColor: "#0A0506",
+    splashColor: "#0D0A09",
+    themeColor: "#0D0A09",
   },
   radius: {
-    base: "0.75rem", // --radius
-    sm: "0.45rem",
-    md: "0.6rem",
-    lg: "0.75rem",
-    xl: "1.05rem",
+    base: "0.45rem",
+    sm: "0.25rem",
+    md: "0.35rem",
+    lg: "0.45rem",
+    xl: "0.7rem",
   },
   shadows: {
-    soft: "0 2px 12px rgba(0, 0, 0, 0.45)",
-    gold: "0 2px 18px rgba(194, 161, 123, 0.28)",
-    glow: "0 0 28px -6px rgba(102, 14, 18, 0.62), 0 0 70px -22px rgba(194, 161, 123, 0.18)",
+    soft: "0 18px 45px rgba(0, 0, 0, 0.24)",
+    gold: "0 0 0 1px rgba(194, 161, 123, 0.22)",
+    glow: "0 18px 45px rgba(0, 0, 0, 0.26)",
   },
 } as const;
 

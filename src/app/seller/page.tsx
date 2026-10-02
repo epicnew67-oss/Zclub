@@ -8,7 +8,6 @@ import { getSellerStatus } from "@/lib/seller";
 import { listSellerListings } from "@/lib/listings";
 import { SellerApprovedAlert } from "@/components/seller/seller-approved-alert";
 import { SellerOnlineSwitch } from "@/components/seller/seller-online-switch";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -91,17 +90,16 @@ export default async function SellerDashboardPage() {
   const balance = typeof balanceResult.data === "number" ? balanceResult.data : 0;
 
   return (
-    <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-6 md:py-12">
-      <div aria-hidden className="pointer-events-none absolute -top-24 right-4 h-72 w-72 rounded-full bg-burgundy/15 blur-3xl" />
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-7 px-5 py-10 md:px-8 md:py-16">
       {application?.status === "approved" &&
       application.reviewed_at &&
       Date.now() - new Date(application.reviewed_at).getTime() <
         30 * 24 * 60 * 60 * 1000 ? (
         <SellerApprovedAlert applicationId={application.id} />
       ) : null}
-      <div>
-        <Badge variant="gold-outline">Seller</Badge>
-        <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-foreground">
+      <div className="border-b border-gold/25 pb-7">
+        <p className="editorial-kicker">Seller studio / Overview</p>
+        <h1 className="mt-4 font-heading text-5xl leading-none font-normal tracking-tight text-foreground md:text-6xl">
           Seller dashboard
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">

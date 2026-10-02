@@ -88,13 +88,14 @@ export function Navbar({
   const showBecomeSeller = Boolean(user) && !isSeller && !isStaff;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 md:px-6">
+    <header className="sticky top-0 z-40 border-b border-gold/25 bg-background/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-3 px-4 md:h-20 md:gap-6 md:px-8">
         <Link href="/" aria-label={`${brand.name} — home`} className="shrink-0">
-          <Logo size="md" />
+          <Logo size="sm" className="md:hidden" />
+          <Logo size="md" className="hidden md:inline-flex" />
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
+        <nav className="ml-3 hidden items-center gap-5 text-[11px] font-semibold tracking-[.12em] uppercase text-muted-foreground xl:flex">
           <Link
             href="/browse"
             prefetch
@@ -102,9 +103,9 @@ export function Navbar({
           >
             Browse
           </Link>
-          <Link href="/orders" prefetch className="inline-flex items-center gap-1.5 transition-colors hover:text-gold">
+          {user ? <Link href="/orders" prefetch className="inline-flex items-center gap-1.5 transition-colors hover:text-gold">
             <ShoppingBagIcon className="size-4" /> My orders
-          </Link>
+          </Link> : <Link href="/#how-it-works" className="transition-colors hover:text-gold">How it works</Link>}
           {user ? (
             <Link
               href="/wallet"
@@ -140,7 +141,7 @@ export function Navbar({
           ) : null}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 md:gap-3">
           {user ? (
             <>
               <BalanceChip
@@ -223,10 +224,13 @@ export function Navbar({
             // unauthenticated visitor never sees a logged-in-looking
             // chip. Server-rendered from the session (no flash).
             <>
-              <Button asChild variant="outline" className="border-gold/50 text-gold hover:border-gold hover:bg-gold/10">
+              <Button asChild variant="ghost" size="sm" className="px-2 text-gold sm:hidden">
+                <Link href="/browse">Explore</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="border-gold/50 text-gold hover:border-gold hover:bg-gold/10">
                 <Link href="/auth/sign-in">Sign in</Link>
               </Button>
-              <Button asChild className="hidden bg-burgundy text-foreground shadow-glow hover:bg-burgundy/90 sm:inline-flex">
+              <Button asChild className="hidden bg-burgundy text-foreground hover:bg-burgundy/90 sm:inline-flex">
                 <Link href="/auth/sign-up">Join now</Link>
               </Button>
             </>
