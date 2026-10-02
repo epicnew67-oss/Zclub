@@ -7,6 +7,68 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: core-flow reliability pass (2026-10-02)
+
+User requested ownership of the existing Zclub app and fixes for its bugs.
+
+### Fixed
+
+- Call links open one tab (removed nested button navigation); only paid,
+  scheduled and live bookings expose Join. Booking status refreshes through
+  Realtime and on focus/reconnect. The call viewport covers the mobile app
+  navigation, preserves selected camera/microphone devices, and reports
+  connection failures and disconnects. LiveKit uses the same configured URL
+  for server signing/room creation and browser connection. Empty-room timeout
+  corrected from 10 seconds to the intended 600 seconds.
+- Order dates now render in the viewer's timezone with an explicit zone;
+  slot picker/checkout SSR is hydration-safe. Slot selection uses native
+  history (no server refetch), and the headline price follows the selected
+  slot's actual price.
+- Search Clear cancels pending debounce work; pending search also cancels
+  on navigation/unmount.
+- Auth redirects preserve rotated session cookies. Shared redirect parsing
+  rejects off-site targets including backslash/control-character variants.
+  Notifications are protected; webhooks and static PWA assets skip auth proxy.
+- Chat loads the newest 500 messages, catches up after reconnect, and keeps
+  order state current. Notification read transitions are idempotent across
+  optimistic updates/realtime echoes; separate hook instances use separate
+  channels, with authoritative refresh on reconnect/focus.
+- Crypto cancellation and webhook state now serialize on the payment row in
+  one DB transaction. Completed payments cannot regress on delayed expired,
+  failed or tracking events. Cancellation cannot overwrite a confirmation;
+  a completed transfer still credits once after a buyer cancels. Display
+  status updates moved into the same RPC. New migration:
+  `20261206000000_payment_state_ordering.sql`.
+- Fixed all 28 baseline lint errors (JSX text, derived UI state and effect/ref
+  lifecycle); restricted-storage errors no longer strand the intro overlay.
+
+### Validation
+
+- `npm run build`: PASS (production compile and TypeScript).
+- `npm test`: PASS (eight existing suites plus new payment ordering suite).
+- `npm run test:topups`: PASS, 22 webhook/manual approval checks.
+- `npm run test:e2e`: PASS, 9 checks: redirect escapes, notification echoes,
+  debounce clear, hydration/slot price/toggle, UI sign-in and purchase,
+  viewer timezone, single call tab, realtime chat/status, finalized call
+  gating and newest-message history (some checks combined in one test).
+- `npm run lint`: PASS, zero errors; 19 existing non-blocking warnings remain.
+- `git diff --check`: PASS.
+- Regression fixture mutations are restricted to local Supabase; users,
+  bookings and ledger are preserved, fixture listings are hidden afterwards.
+- Migration applied and race-tested locally, then successfully applied to
+  production Supabase after a dry run confirmed it was the only pending migration.
+  Application deployment follows this commit.
+
+### Remaining limits / known follow-ups
+
+- Real two-person camera/audio and an actual funded NOWPayments settlement
+  need live end-to-end verification; automated tests cover the UI, authorization,
+  provider webhook handling and ledger concurrency without spending money.
+- This pass resolves the reproduced issues above, not a claim that every
+  possible workflow is bug-free. Existing 60-minute call grace and earlier
+  no-show policy remain unchanged; their product-policy alignment merits
+  a separate decision before changing refund timing.
+
 ## Phase: call grace window (this phase)
 
 User: "cant the seller start the call? it shows call ended near the chat."

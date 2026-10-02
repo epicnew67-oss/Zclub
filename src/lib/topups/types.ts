@@ -1,3 +1,4 @@
+import { safeRedirectPath } from "../safe-redirect";
 // Client-safe top-up types + bucket + return-url sanitizer.
 // Never import anything server-only from here.
 
@@ -117,16 +118,5 @@ export type FinanceQueueItem = {
  * Prevents open redirects after payment.
  */
 export function sanitizeReturnUrl(value: string | null | undefined): string {
-  const fallback = "/wallet";
-  if (!value) return fallback;
-  if (value.startsWith("/") && !value.startsWith("//")) return value;
-  try {
-    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const siteOrigin = new URL(origin).origin;
-    const url = new URL(value);
-    if (url.origin === siteOrigin) return `${url.pathname}${url.search}`;
-  } catch {
-    // fall through to the fallback
-  }
-  return fallback;
+  return safeRedirectPath(value, "/wallet", process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
 }

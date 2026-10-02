@@ -3,10 +3,9 @@ import Link from "next/link";
 import { ArrowRightIcon, ListChecksIcon, ShoppingBagIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
 import { getSellerStatus } from "@/lib/seller";
 import { listSellerOrders } from "@/lib/bookings";
-import { upperMeridiem } from "@/lib/datetime-format";
+import { LocalDateTime } from "@/components/local-date-time";
 import { SellerSidebar, SellerMobileNav } from "@/components/seller/seller-sidebar";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { AuthCard } from "@/components/auth/auth-card";
@@ -17,18 +16,6 @@ import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = { title: "Seller orders" };
 
-function formatLocal(iso: string) {
-  return upperMeridiem(
-    new Date(iso).toLocaleString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  );
-}
 
 export default async function SellerOrdersPage() {
   if (!isSupabaseConfigured()) {
@@ -128,7 +115,7 @@ export default async function SellerOrdersPage() {
                         <span className="text-foreground/90">
                           {order.counterparty.displayName}
                         </span>{" "}
-                        · {formatLocal(order.slotStart)}
+                        · <LocalDateTime value={order.slotStart} />
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

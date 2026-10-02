@@ -1,3 +1,4 @@
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import type { Metadata } from "next";
 import { AuthCard, SupabaseNotConfigured } from "@/components/auth/auth-card";
 import { SignInForm } from "@/components/auth/sign-in-form";
@@ -13,10 +14,7 @@ export default async function SignInPage({
   }
 
   const { next } = await searchParams;
-  const nextPath =
-    typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-      ? next
-      : "/account";
+  const nextPath = safeRedirectPath(next);
 
   return (
     <AuthCard

@@ -6,6 +6,7 @@ import {
   LiveKitRoom,
   useRoomContext,
   VideoConference,
+  type LocalUserChoices,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { Room } from "livekit-client";
@@ -26,7 +27,6 @@ function fmt(seconds: number): string {
 export function CallRoom({
   token,
   url,
-  roomName,
   role,
   endsAt,
   bookingId,
@@ -41,21 +41,18 @@ export function CallRoom({
   // Pre-join holds the camera/mic preview + device picker before the
   // LiveKit room is connected. Once the user clicks "Join", we hand
   // off to LiveKitRoom with the cached audio/video enable state.
-  const [preJoinChoices, setPreJoinChoices] = useState<{
-    username: string;
-    videoEnabled: boolean;
-    audioEnabled: boolean;
-  } | null>(null);
+  const [preJoinChoices, setPreJoinChoices] = useState<LocalUserChoices | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
+  const [leftCall, setLeftCall] = useState(false);
 
-  const handlePreJoinSubmit = useCallback((choices: {
-    username: string;
-    videoEnabled: boolean;
-    audioEnabled: boolean;
-  }) => {
+  const handlePreJoinSubmit = useCallback((choices: LocalUserChoices) => {
+    setCallError(null);
+    setLeftCall(false);
     setPreJoinChoices(choices);
   }, []);
 
   const handlePreJoinError = useCallback((err: Error) => {
+    setCallError("Camera or microphone unavailable. Check browser permissions or join with them turned off.");
     console.error("pre-join failed", err);
   }, []);
 
@@ -66,13 +63,21 @@ export function CallRoom({
     });
   }, []);
 
-  const liveKitRoom = preJoinChoices ? (
+  const liveKitRoom = leftCall ? (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+      <h1 className="font-heading text-xl text-gold">You left the call</h1>
+      <Button asChild><Link href={`/orders/${bookingId}`}>Back to order</Link></Button>
+    </div>
+  ) : preJoinChoices ? (
     <LiveKitRoom
       token={token}
       serverUrl={url}
       connect={true}
-      audio={preJoinChoices.audioEnabled}
-      video={preJoinChoices.videoEnabled}
+      audio={preJoinChoices.audioEnabled ? { deviceId: preJoinChoices.audioDeviceId } : false}
+      video={preJoinChoices.videoEnabled ? { deviceId: preJoinChoices.videoDeviceId } : false}
+      onConnected={() => { void room.localParticipant.setName(preJoinChoices.username).catch(() => {}); }}
+      onDisconnected={() => setLeftCall(true)}
+      onError={() => setCallError("Could not connect to the call. Check your connection and return to the order to try again.")}
       room={room}
       style={{ height: "100%", width: "100%" }}
     >
@@ -93,8 +98,8 @@ export function CallRoom({
   return (
     <div
       data-testid="call-page"
-      data-call-state={preJoinChoices ? "in-call" : "pre-join"}
-      className="relative isolate flex h-[100dvh] w-full flex-col overflow-hidden bg-[#0A0506] text-[#F3ECE4]"
+      data-call-state={leftCall ? "disconnected" : preJoinChoices ? "in-call" : "pre-join"}
+      className="fixed inset-0 z-50 isolate flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground"
     >
       {/* Header bar — Logo mark in the corner per brand spec. */}
       <div className="pointer-events-none absolute top-4 left-4 z-30 flex items-center gap-3">
@@ -116,6 +121,7 @@ export function CallRoom({
         className="pointer-events-none absolute -top-40 -right-40 z-0 h-[36rem] w-[36rem] rounded-full bg-burgundy/20 blur-3xl"
       />
 
+      {callError ? <p role="alert" className="relative z-40 mx-auto mt-16 max-w-md rounded-lg border border-destructive/40 bg-background p-4 text-sm">{callError}</p> : null}
       {liveKitRoom}
     </div>
   );

@@ -54,39 +54,12 @@ export async function cancelCryptoTopupAction(topupId: string) {
   if (!user) return { error: "Sign in required." } as const;
 
   try {
-    const admin = createAdminClient();
-    const { data: topup } = await admin
-      .from("topup_requests")
-      .select("id, user_id, method, status, payment_id")
-      .eq("id", topupId)
-      .maybeSingle();
-    if (!topup || topup.user_id !== user.id) {
-      return { error: "Top-up not found." } as const;
-    }
-    if (topup.method !== "crypto") {
-      return { error: "Only crypto payments can be cancelled here." } as const;
-    }
-    if (topup.status !== "pending") {
-      return { error: "This payment is no longer pending." } as const;
-    }
-
-    const { error } = await admin
-      .from("topup_requests")
-      .update({
-        status: "expired",
-        processed_at: new Date().toISOString(),
-        review_note: "Cancelled by the buyer",
-      })
-      .eq("id", topupId)
-      .eq("status", "pending");
+    const { data, error } = await supabase.rpc("cancel_crypto_topup", {
+      _topup_id: topupId,
+    } as never);
     if (error) throw error;
-
-    if (topup.payment_id) {
-      await admin
-        .from("payments")
-        .update({ pay_status: "cancelled" })
-        .eq("id", topup.payment_id);
-    }
+    const result = data as { ok: boolean; error?: string };
+    if (!result?.ok) return { error: result?.error ?? "Could not cancel the payment." } as const;
 
     revalidatePath("/wallet/topup/status");
     return { ok: true } as const;

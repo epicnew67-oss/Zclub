@@ -44,14 +44,11 @@ const STATUS_VARIANT: Record<
 
 export function FinancePayoutsQueue({ initialItems }: Props) {
   const router = useRouter();
-  const [items, setItems] = useState<PayoutRow[]>(initialItems);
+  const items = initialItems;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
   const [refById, setRefById] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
 
   // Keep fresh without relying on RLS-bypassed Realtime.
   useEffect(() => {
@@ -246,7 +243,7 @@ export function FinancePayoutsQueue({ initialItems }: Props) {
           Pending <span className="text-gold">({pending.length})</span>
         </h2>
         <p className="text-sm text-muted-foreground">
-          Approve to move to "approved" (awaiting payment) or reject with a
+          Approve to move to &quot;approved&quot; (awaiting payment) or reject with a
           reason.
         </p>
         {pending.length === 0 ? (
@@ -266,7 +263,7 @@ export function FinancePayoutsQueue({ initialItems }: Props) {
           <span className="text-gold">({approved.length})</span>
         </h2>
         <p className="text-sm text-muted-foreground">
-          Paste the transfer reference and mark paid. The seller's ledger
+          Paste the transfer reference and mark paid. The seller&apos;s ledger
           is debited exactly once (idempotent).
         </p>
         {approved.length === 0 ? (

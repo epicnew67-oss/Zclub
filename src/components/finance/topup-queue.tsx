@@ -31,23 +31,27 @@ import type { FinanceQueueItem } from "@/lib/topups/types";
 type Props = { initialItems: FinanceQueueItem[] };
 
 function ExpiredBadge({ expiresAt }: { expiresAt: string | null }) {
-  if (!expiresAt) return null;
-  const expired = new Date(expiresAt).getTime() < Date.now();
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const frame = requestAnimationFrame(tick);
+    const timer = setInterval(tick, 1000);
+    return () => { cancelAnimationFrame(frame); clearInterval(timer); };
+  }, []);
+  if (!expiresAt || now === null) return null;
+  const expired = new Date(expiresAt).getTime() < now;
   if (!expired) return null;
   return <Badge variant="destructive">Expired window</Badge>;
 }
 
 export function FinanceTopupQueue({ initialItems }: Props) {
-  const [items, setItems] = useState<FinanceQueueItem[]>(initialItems);
+  const items = initialItems;
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
 
   // Deep link from admin notifications: /finance/topups?id=<topupId>
   // scrolls to that card and rings it briefly so the notification lands
@@ -55,8 +59,8 @@ export function FinanceTopupQueue({ initialItems }: Props) {
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("id");
     if (!id) return;
-    setHighlightId(id);
     const scrollTimer = setTimeout(() => {
+      setHighlightId(id);
       document
         .getElementById(`topup-${id}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });

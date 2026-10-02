@@ -194,7 +194,7 @@ export default async function WalletPage({
             </p>
             <p>
               <span className="text-foreground">No overdraws.</span> The
-              wallet row is locked during debits — concurrent spends can't
+              wallet row is locked during debits — concurrent spends can&apos;t
               dip below zero.
             </p>
           </CardContent>
@@ -220,7 +220,7 @@ export default async function WalletPage({
           <CardHeader>
             <CardTitle>Ledger history</CardTitle>
             <CardDescription>
-              Your wallet isn't initialized yet. Sign out and back in to
+              Your wallet isn&apos;t initialized yet. Sign out and back in to
               provision it.
             </CardDescription>
           </CardHeader>

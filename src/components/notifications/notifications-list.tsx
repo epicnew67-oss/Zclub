@@ -36,7 +36,7 @@ export function NotificationsList({ rows }: { rows: NotificationRow[] }) {
       <ul>
         {live.length === 0 ? (
           <li className="px-4 py-12 text-center text-sm text-muted-foreground">
-            You don't have any notifications yet.
+            You don&apos;t have any notifications yet.
           </li>
         ) : null}
         {live.map((r) => (

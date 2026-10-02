@@ -52,37 +52,7 @@ export function NotificationBell({
     void maybeAutoSubscribe();
   }, [open]);
 
-  async function maybeAutoSubscribe() {
-    try {
-      const res = await fetch("/api/push/public-key");
-      if (!res.ok) return;
-      const { publicKey } = await res.json();
-      if (!publicKey) return;
-      const reg = await navigator.serviceWorker.ready;
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) return;
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-      });
-      const p256dh = sub.getKey("p256dh");
-      const auth = sub.getKey("auth");
-      if (!p256dh || !auth) return;
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          endpoint: sub.endpoint,
-          keys: { p256dh: arrayBufferToBase64(p256dh), auth: arrayBufferToBase64(auth) },
-          userAgent: navigator.userAgent,
-        }),
-      });
-    } catch (_) {
-      /* ignore — best-effort */
-    }
-  }
+
 
   return (
     <div ref={rootRef} className="relative">
@@ -216,3 +186,35 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   for (let i = 0; i < bytes.byteLength; i += 1) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
+
+  async function maybeAutoSubscribe() {
+    try {
+      const res = await fetch("/api/push/public-key");
+      if (!res.ok) return;
+      const { publicKey } = await res.json();
+      if (!publicKey) return;
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) return;
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+      });
+      const p256dh = sub.getKey("p256dh");
+      const auth = sub.getKey("auth");
+      if (!p256dh || !auth) return;
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          endpoint: sub.endpoint,
+          keys: { p256dh: arrayBufferToBase64(p256dh), auth: arrayBufferToBase64(auth) },
+          userAgent: navigator.userAgent,
+        }),
+      });
+    } catch {
+      /* ignore — best-effort */
+    }
+  }

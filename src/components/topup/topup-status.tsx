@@ -75,6 +75,12 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
   const router = useRouter();
   const [topup, setTopup] = useState(initial);
   const [payment, setPayment] = useState(initialPayment);
+  const [previous, setPrevious] = useState({ topup: initial, payment: initialPayment });
+  if (previous.topup !== initial || previous.payment !== initialPayment) {
+    setPrevious({ topup: initial, payment: initialPayment });
+    setTopup(initial);
+    setPayment(initialPayment);
+  }
   const [successRedirectFired, setSuccessRedirectFired] = useState(topup.status === "completed");
   const [copied, setCopied] = useState<"address" | "amount" | null>(null);
   const [cancelPending, startCancel] = useTransition();
@@ -82,6 +88,7 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
   const isPending = topup.status === "pending";
   const isCrypto = topup.method === "crypto";
   const hasDirectCrypto = isCrypto && Boolean(payment?.pay_address);
+  const paymentId = payment?.id;
 
   // Live updates: the buyer's own row (RLS own-policy makes this filtered).
   useEffect(() => {
@@ -112,17 +119,17 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
 
   // Also track the linked payment (address / status / flagged states).
   useEffect(() => {
-    if (!payment) return;
+    if (!paymentId) return;
     const supabase = createClient();
     const channel = supabase
-      .channel(`topup-payment:${payment.id}`)
+      .channel(`topup-payment:${paymentId}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "payments",
-          filter: `id=eq.${payment.id}`,
+          filter: `id=eq.${paymentId}`,
         },
         (payload) => {
           const next = payload.new as TopupStatusData["payment"];
@@ -133,7 +140,7 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [payment?.id]);
+  }, [paymentId]);
 
   // Server-side status sync: ask OUR server to re-check NOWPayments and
   // apply the result through the same idempotent credit path as the IPN.
@@ -231,8 +238,6 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
         return;
       }
       toast.success("Payment cancelled.");
-      setTopup((prev) => ({ ...prev, status: "expired" }));
-      setPayment((prev) => (prev ? { ...prev, pay_status: "cancelled" } : prev));
       router.refresh();
     });
   }
@@ -408,7 +413,7 @@ export function TopupStatus({ userId: _userId, topup: initial, payment: initialP
                 <Link href={returnUrl}>Continue</Link>
               </Button>
             ) : null}
-            {hasDirectCrypto && isPending ? (
+            {hasDirectCrypto && isPending && (!payment?.pay_status || payment.pay_status === "waiting") ? (
               <Button
                 type="button"
                 variant="ghost"

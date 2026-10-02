@@ -47,7 +47,8 @@ export const Meteors = ({
         Math.floor(Math.random() * (maxDuration - minDuration) + minDuration) +
         "s",
     }))
-    setMeteorStyles(styles)
+    const frame = requestAnimationFrame(() => setMeteorStyles(styles))
+    return () => cancelAnimationFrame(frame)
   }, [number, minDelay, maxDelay, minDuration, maxDuration, angle])
 
   return (

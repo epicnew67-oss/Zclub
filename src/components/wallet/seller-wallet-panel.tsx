@@ -316,7 +316,7 @@ export function SellerWalletPanel({ summary, payouts, minTokens }: Props) {
       <Separator />
 
       <p className="text-xs text-muted-foreground">
-        Commissions come out of the seller's share at release time. The
+        Commissions come out of the seller&apos;s share at release time. The
         ledger entries below show each transfer.
       </p>
     </div>

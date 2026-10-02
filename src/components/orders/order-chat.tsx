@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Loader2Icon, SendIcon } from "lucide-react";
@@ -57,6 +58,7 @@ export function OrderChat({
   slotEndsAt: string;
   initialMessages: Msg[];
 }) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
@@ -73,6 +75,18 @@ export function OrderChat({
   // Realtime subscription for new messages.
   useEffect(() => {
     const supabase = createClient();
+    let active = true;
+    async function catchUp() {
+      const { data, error } = await supabase.from("booking_messages")
+        .select("id, sender_id, body, created_at").eq("chat_id", chatId)
+        .order("created_at", { ascending: false }).limit(500);
+      if (!active || error || !data) return;
+      setMessages((prev) => {
+        const merged = new Map(prev.map(m => [m.id, m]));
+        for (const m of data) merged.set(m.id, { id: m.id, senderId: m.sender_id, body: m.body, createdAt: m.created_at });
+        return [...merged.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(-500);
+      });
+    }
     const channel = supabase
       .channel(`booking-chat:${chatId}`)
       .on(
@@ -104,11 +118,20 @@ export function OrderChat({
           });
         }
       )
-      .subscribe();
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "bookings", filter: `id=eq.${bookingId}`,
+      }, () => router.refresh())
+      .subscribe((state) => {
+        if (state === "SUBSCRIBED") { void catchUp(); router.refresh(); }
+      });
+    const onFocus = () => { void catchUp(); router.refresh(); };
+    window.addEventListener("focus", onFocus);
     return () => {
+      active = false;
+      window.removeEventListener("focus", onFocus);
       supabase.removeChannel(channel);
     };
-  }, [chatId]);
+  }, [chatId, bookingId, router]);
 
   function send() {
     const body = draft.trim();

@@ -5,14 +5,14 @@
  * Wraps the SDK's `<PreJoin>` so we can apply brand styles (dark, gold)
  * and clamp the UI inside our call layout.
  */
-import { PreJoin as LkPreJoin } from "@livekit/components-react";
+import { PreJoin as LkPreJoin, type LocalUserChoices } from "@livekit/components-react";
 
 export function PreJoin({
   onSubmit,
   onError,
   defaults,
 }: {
-  onSubmit: (values: { username: string; videoEnabled: boolean; audioEnabled: boolean }) => void;
+  onSubmit: (values: LocalUserChoices) => void;
   onError: (error: Error) => void;
   defaults?: { username?: string; videoEnabled?: boolean; audioEnabled?: boolean };
 }) {
@@ -30,6 +30,7 @@ export function PreJoin({
           <LkPreJoin
             onSubmit={(values) =>
               onSubmit({
+                ...values,
                 username: values.username ?? defaults?.username ?? "Guest",
                 videoEnabled: values.videoEnabled,
                 audioEnabled: values.audioEnabled,

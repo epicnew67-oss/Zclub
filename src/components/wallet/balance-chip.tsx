@@ -32,9 +32,11 @@ export function BalanceChip({
   const [pulse, setPulse] = useState<"up" | "down" | null>(null);
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  const [previousBalance, setPreviousBalance] = useState(initialBalance);
+  if (previousBalance !== initialBalance) {
+    setPreviousBalance(initialBalance);
     setBalance(initialBalance);
-  }, [initialBalance]);
+  }
 
   useEffect(() => {
     if (!walletId || !signedIn) return;
@@ -55,8 +57,7 @@ export function BalanceChip({
           // than applying the delta — if the event drops or arrives
           // out of order, the RPC sum is the source of truth.
           const { data } = await supabase.rpc("get_own_wallet_balance");
-          const next = typeof data === "number" ? data : balance;
-          setBalance(next);
+          if (typeof data === "number") setBalance(data);
           if (pulseTimer.current) clearTimeout(pulseTimer.current);
           setPulse(newAmount >= 0 ? "up" : "down");
           pulseTimer.current = setTimeout(() => setPulse(null), 700);
@@ -67,9 +68,6 @@ export function BalanceChip({
       if (pulseTimer.current) clearTimeout(pulseTimer.current);
       supabase.removeChannel(channel);
     };
-    // We intentionally exclude `balance` from deps — the listener only
-    // cares about walletId/signedIn changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletId, signedIn]);
 
   return (

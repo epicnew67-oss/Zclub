@@ -86,7 +86,7 @@ function fmtTime(iso: string | null | undefined) {
 
 export function AdminDisputesManager({ initialCards }: Props) {
   const router = useRouter();
-  const [cards, setCards] = useState<DisputeCardData[]>(initialCards);
+  const cards = initialCards;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [openOutcome, setOpenOutcome] = useState<
     "refund_buyer" | "release_seller" | "split" | null
@@ -98,9 +98,6 @@ export function AdminDisputesManager({ initialCards }: Props) {
   >({});
   const [openedId, setOpenedId] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    setCards(initialCards);
-  }, [initialCards]);
 
   useEffect(() => {
     const t = setInterval(() => router.refresh(), 15000);

@@ -17,11 +17,15 @@ export function LoadingScreen() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === "1") {
-      setDone(true);
-      return;
+    try {
+      if (sessionStorage.getItem(SESSION_KEY) === "1") {
+        const frame = requestAnimationFrame(() => setDone(true));
+        return () => cancelAnimationFrame(frame);
+      }
+      sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // Restricted storage must not trap the visitor behind the intro.
     }
-    sessionStorage.setItem(SESSION_KEY, "1");
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const timer = window.setTimeout(() => setDone(true), 250);

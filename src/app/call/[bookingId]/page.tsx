@@ -1,6 +1,6 @@
+/* eslint-disable react-hooks/purity -- Async Server Component: time is evaluated per authenticated request, never in a client render. */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { ensureCallRoom, livekitConfig, mintAccessToken } from "@/lib/livekit";
@@ -123,7 +123,8 @@ export default async function CallPage({
     );
   }
 
-  if (!livekitConfig()) {
+  const callConfig = livekitConfig();
+  if (!callConfig) {
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <AuthCard
@@ -157,7 +158,7 @@ export default async function CallPage({
   return (
     <CallRoom
       token={token}
-      url={result.url}
+      url={callConfig.url}
       roomName={result.room_name}
       role={result.role}
       endsAt={result.ends_at}

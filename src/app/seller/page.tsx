@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity -- Async Server Component: time is evaluated per authenticated request, never in a client render. */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase/config";

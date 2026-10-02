@@ -80,7 +80,7 @@ export default async function TopupPage({
           Top up <span className="text-gold">tokens</span>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Pick a pack from the list below, then choose how you'd like to pay. 1
+          Pick a pack from the list below, then choose how you&apos;d like to pay. 1
           PKR = 2 tokens. Card payments are not available.
         </p>
         {needed != null && needed > 0 ? (

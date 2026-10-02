@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/test-wallet.mjs && node scripts/test-sellers.mjs && node scripts/test-listings.mjs && node scripts/test-bookings.mjs && node scripts/test-livekit.mjs && node scripts/test-post-call-money.mjs && node scripts/test-admin-panel.mjs && node scripts/test-notifications-pwa.mjs",
+    "test": "node scripts/test-wallet.mjs && node scripts/test-sellers.mjs && node scripts/test-listings.mjs && node scripts/test-bookings.mjs && node scripts/test-livekit.mjs && node scripts/test-post-call-money.mjs && node scripts/test-admin-panel.mjs && node scripts/test-notifications-pwa.mjs && node scripts/test-payment-ordering.mjs",
     "test:wallet": "node scripts/test-wallet.mjs",
     "test:sellers": "node scripts/test-sellers.mjs",
     "test:listings": "node scripts/test-listings.mjs",
@@ -18,7 +18,9 @@
     "test:admin-panel": "node scripts/test-admin-panel.mjs",
     "test:notifications-pwa": "node scripts/test-notifications-pwa.mjs",
     "bookings:tick": "node scripts/sweep-no-shows.mjs",
-    "bookings:release": "node scripts/sweep-releases.mjs"
+    "bookings:release": "node scripts/sweep-releases.mjs",
+    "test:e2e": "playwright test",
+    "test:payment-ordering": "node scripts/test-payment-ordering.mjs"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.24",
@@ -46,6 +48,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

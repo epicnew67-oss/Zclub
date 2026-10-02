@@ -24,14 +24,20 @@ export function SearchInput({
   const [value, setValue] = useState(initial);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync external changes (back/forward, link click).
-  useEffect(() => {
-    const next = params.get("q") ?? "";
-    setValue((cur) => (cur === next ? cur : next));
-     
+  const query = params.get("q") ?? "";
+  const [previousQuery, setPreviousQuery] = useState(query);
+  if (query !== previousQuery) {
+    setPreviousQuery(query);
+    setValue(query);
+  }
+
+  // Cancel pending work on navigation/unmount as well as when clearing.
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
   }, [params]);
 
   function commit(next: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     const sp = new URLSearchParams(params.toString());
     if (next.trim()) sp.set("q", next.trim());
     else sp.delete("q");

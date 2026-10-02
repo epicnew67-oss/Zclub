@@ -111,8 +111,8 @@ export function ReportProblemButton({ bookingId, role, status }: Props) {
           <DialogTitle>Report a problem</DialogTitle>
           <DialogDescription>
             Tell us what went wrong. Opening a dispute freezes the escrow
-            so the seller doesn't receive the payout until support reviews
-            it. We'll notify the other party and follow up by email.
+            so the seller doesn&apos;t receive the payout until support reviews
+            it. We&apos;ll notify the other party and follow up by email.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -15,8 +15,9 @@ import { Card } from "@/components/ui/card";
 import { purchaseSlotAction } from "@/app/orders/actions";
 import type { BrowseListingDetail } from "@/lib/browse";
 import { upperMeridiem } from "@/lib/datetime-format";
+import { useHydrated } from "@/hooks/use-hydrated";
 
-function formatLocalRange(startsIso: string, endsIso: string): string {
+function formatLocalRange(startsIso: string, endsIso: string, hydrated: boolean): string {
   const s = new Date(startsIso);
   const e = new Date(endsIso);
   const opts: Intl.DateTimeFormatOptions = {
@@ -26,12 +27,14 @@ function formatLocalRange(startsIso: string, endsIso: string): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: hydrated ? undefined : "UTC",
   };
   return upperMeridiem(
-    `${s.toLocaleString(undefined, opts)} – ${e.toLocaleTimeString(undefined, {
+    `${s.toLocaleString(hydrated ? undefined : "en-US", opts)} – ${e.toLocaleTimeString(hydrated ? undefined : "en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: hydrated ? undefined : "UTC",
     })}`
   );
 }
@@ -73,6 +76,7 @@ export function BuyPanel({
   const pathname = usePathname();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const hydrated = useHydrated();
 
   const slotId = params.get("slot");
   const selectedSlot =
@@ -143,7 +147,7 @@ export function BuyPanel({
         </p>
         <p className="mt-0.5 flex items-baseline gap-1">
           <span className="font-heading text-3xl font-semibold text-gold">
-            {listing.price_tokens.toLocaleString()}
+            {(selectedSlot?.price_tokens ?? listing.price_tokens).toLocaleString()}
           </span>
           <span className="text-xs text-muted-foreground">tokens</span>
         </p>
@@ -170,7 +174,7 @@ export function BuyPanel({
             Selected slot
           </p>
           <p className="mt-0.5 text-foreground/90">
-            {formatLocalRange(selectedSlot.starts_at, selectedSlot.ends_at)}
+            {formatLocalRange(selectedSlot.starts_at, selectedSlot.ends_at, hydrated)}
           </p>
           <p className="mt-0.5 text-muted-foreground">
             {selectedSlot.price_tokens.toLocaleString()} tokens

@@ -316,7 +316,6 @@ export async function syncCryptoPaymentForTopup(
   await admin
     .from("payments")
     .update({
-      pay_status: status.status,
       pay_address: payment.pay_address,
       ...(status.expiresAt ? { pay_expires_at: status.expiresAt } : {}),
     })
@@ -324,11 +323,12 @@ export async function syncCryptoPaymentForTopup(
 
   const { data: fresh } = await admin
     .from("topup_requests")
-    .select("status")
+    .select("status, payments(pay_status)")
     .eq("id", topupId)
     .maybeSingle();
 
-  return { status: fresh?.status ?? "pending", payStatus: status.status };
+  const freshPayment = fresh?.payments as unknown as { pay_status: string | null } | null;
+  return { status: fresh?.status ?? "pending", payStatus: freshPayment?.pay_status ?? status.status };
 }
 
 // ---------------------------------------------------------------- manual

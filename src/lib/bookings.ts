@@ -458,9 +458,9 @@ export async function listChatMessages(chatId: string) {
     .from("booking_messages")
     .select("id, sender_id, body, created_at")
     .eq("chat_id", chatId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(500);
-  return (data ?? []).map((r) => ({
+  return (data ?? []).reverse().map((r) => ({
     id: r.id,
     senderId: r.sender_id,
     body: r.body,

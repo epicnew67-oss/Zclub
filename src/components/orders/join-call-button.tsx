@@ -43,7 +43,7 @@ export function JoinCallButton({
   const end = new Date(slotEndsAt).getTime();
   const opensAt = start - CALL_OPENS_BEFORE_MINUTES * 60_000;
   const graceEnd = end + CALL_GRACE_MINUTES * 60_000;
-  const finalized = status === "cancelled" || status === "seller_no_show" || status === "completed";
+  const finalized = !["paid", "scheduled", "live"].includes(status);
   const canJoin = !finalized && now >= opensAt && now <= graceEnd;
 
   let label = "Join call";
@@ -60,7 +60,19 @@ export function JoinCallButton({
     disabledReason = "The scheduled call window has passed.";
   }
 
-  const button = (
+  if (canJoin) {
+    return (
+      <Button asChild size="sm" className="bg-burgundy text-foreground shadow-glow hover:bg-burgundy/90">
+        <Link href={`/call/${bookingId}`} target="_blank" rel="noopener noreferrer"
+          prefetch={false} data-join-call="ready" title="Open the video call in a new tab">
+          <VideoIcon className="mr-1.5 size-3.5" />
+          Join call
+        </Link>
+      </Button>
+    );
+  }
+
+  return (
     <Button
       type="button"
       variant={canJoin ? "default" : "outline"}
@@ -72,10 +84,6 @@ export function JoinCallButton({
           ? "bg-burgundy text-foreground shadow-glow hover:bg-burgundy/90"
           : undefined
       }
-      onClick={() => {
-        if (!canJoin) return;
-        window.open(`/call/${bookingId}`, "_blank", "noopener,noreferrer");
-      }}
       data-join-call={canJoin ? "ready" : "disabled"}
     >
       <VideoIcon className="mr-1.5 size-3.5" />
@@ -83,19 +91,4 @@ export function JoinCallButton({
     </Button>
   );
 
-  // When disabled with a "joinable" URL we still wrap in a Link so the
-  // server route can render its own denial message (and so right-click
-  // "open in new tab" still works in the rare case the boundary has
-  // just flipped).
-  return (
-    <Link
-      href={`/call/${bookingId}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      prefetch={false}
-      className={canJoin ? "contents" : "pointer-events-none"}
-    >
-      {button}
-    </Link>
-  );
 }

@@ -23,7 +23,9 @@ export function useGsap<T extends HTMLElement = HTMLDivElement>(
 ) {
   const scopeRef = useRef<T | null>(null);
   const setupRef = useRef(setup);
-  setupRef.current = setup;
+  useIsomorphicLayoutEffect(() => {
+    setupRef.current = setup;
+  });
 
   useIsomorphicLayoutEffect(() => {
     const scope = scopeRef.current;

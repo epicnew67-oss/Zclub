@@ -79,7 +79,7 @@ export async function ensureCallRoom(roomName: string): Promise<void> {
   try {
     await svc.createRoom({
       name: roomName,
-      emptyTimeout: 10, // close empty rooms after 10 minutes
+      emptyTimeout: 600, // LiveKit expects seconds: allow ten minutes to finish pre-join.
       maxParticipants: 2,
     });
   } catch {

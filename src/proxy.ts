@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED_PREFIXES = ["/account", "/wallet", "/finance", "/become-a-seller", "/orders", "/seller", "/admin", "/call"];
+const PROTECTED_PREFIXES = ["/account", "/wallet", "/finance", "/become-a-seller", "/orders", "/seller", "/admin", "/call", "/notifications"];
 const GUEST_ONLY_PREFIXES = [
   "/auth/sign-in",
   "/auth/sign-up",
@@ -64,23 +64,31 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // A refresh can rotate the session during this request. Redirects must
+  // carry those cookies too, otherwise the browser retains the expired token.
+  function redirectWithSession(target: URL) {
+    const redirect = NextResponse.redirect(target);
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+    return redirect;
+  }
+
   if (!user && matches(pathname, PROTECTED_PREFIXES)) {
     const target = request.nextUrl.clone();
     target.pathname = "/auth/sign-in";
     target.search = `?next=${encodeURIComponent(pathname + search)}`;
-    return NextResponse.redirect(target);
+    return redirectWithSession(target);
   }
 
   if (user && matches(pathname, GUEST_ONLY_PREFIXES)) {
     const target = request.nextUrl.clone();
     target.pathname = "/account";
     target.search = "";
-    return NextResponse.redirect(target);
+    return redirectWithSession(target);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|brand/|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|brand/|favicon.ico|sw.js|manifest.webmanifest|api/webhooks/).*)"],
 };

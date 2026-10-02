@@ -5,7 +5,7 @@ import { ArrowLeftIcon, CalendarIcon, CoinsIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { getOrderForUser, listChatMessages } from "@/lib/bookings";
-import { upperMeridiem } from "@/lib/datetime-format";
+import { LocalDateTime } from "@/components/local-date-time";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderChat } from "@/components/orders/order-chat";
 import { OrderStatusHeader } from "@/components/orders/order-status-header";
@@ -23,18 +23,6 @@ export async function generateMetadata({
   return { title: `Order ${id.slice(0, 8)}` };
 }
 
-function formatLocal(iso: string) {
-  return upperMeridiem(
-    new Date(iso).toLocaleString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  );
-}
 
 export default async function OrderDetailPage({
   params,
@@ -89,7 +77,7 @@ export default async function OrderDetailPage({
             {order.role === "buyer" ? order.seller.displayName : order.buyer.displayName}
           </span>{" "}
           · <CalendarIcon className="inline size-3.5 align-text-bottom" />{" "}
-          {formatLocal(order.slot.startsAt)}
+          <LocalDateTime value={order.slot.startsAt} />
         </p>
       </header>
 

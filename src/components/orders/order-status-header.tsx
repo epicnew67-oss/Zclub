@@ -2,21 +2,9 @@ import { ClockIcon, CoinsIcon, ShieldCheckIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CancelBookingButton } from "@/components/orders/cancel-booking-button";
 import { ReportProblemButton } from "@/components/orders/report-problem-button";
-import { upperMeridiem } from "@/lib/datetime-format";
+import { LocalDateTime } from "@/components/local-date-time";
 import type { OrderDetail } from "@/lib/bookings";
 
-function formatLocal(iso: string) {
-  return upperMeridiem(
-    new Date(iso).toLocaleString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  );
-}
 
 function durationMinutes(startsIso: string, endsIso: string) {
   return Math.max(
@@ -39,10 +27,10 @@ export function OrderStatusHeader({ order }: { order: OrderDetail }) {
               When
             </p>
             <p className="mt-0.5 font-heading text-base text-foreground">
-              {formatLocal(order.slot.startsAt)}
+              <LocalDateTime value={order.slot.startsAt} />
             </p>
             <p className="text-xs text-muted-foreground">
-              ends {formatLocal(order.slot.endsAt)}
+              ends <LocalDateTime value={order.slot.endsAt} />
             </p>
           </div>
           <ul className="grid gap-2 text-sm md:grid-cols-3">

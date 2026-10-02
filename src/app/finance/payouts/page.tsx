@@ -63,7 +63,7 @@ export default async function FinancePayoutsPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Sellers request withdrawals; finance approves and marks the
           transfer paid with a reference. Approving is reversible until
-          "mark paid" runs (which debits the seller ledger exactly once,
+          &quot;mark paid&quot; runs (which debits the seller ledger exactly once,
           idempotent on replay).
         </p>
       </header>

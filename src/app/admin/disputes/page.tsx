@@ -82,7 +82,7 @@ export default async function AdminDisputesPage() {
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Booking escrow is frozen when a dispute opens. Read the chat
-          history (opening the chat requires a reason that's logged in
+          history (opening the chat requires a reason that&apos;s logged in
           the resolution note), then resolve as refund / release / split.
           Every resolution writes an audit log row and notifies both
           parties.

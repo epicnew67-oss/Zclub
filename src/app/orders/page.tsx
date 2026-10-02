@@ -3,9 +3,8 @@ import Link from "next/link";
 import { ArrowRightIcon, CoinsIcon, ShoppingBagIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
 import { listBuyerOrders } from "@/lib/bookings";
-import { upperMeridiem } from "@/lib/datetime-format";
+import { LocalDateTime } from "@/components/local-date-time";
 import { AuthCard } from "@/components/auth/auth-card";
 import { BalanceChip } from "@/components/wallet/balance-chip";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
@@ -22,18 +21,6 @@ import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = { title: "Your orders" };
 
-function formatLocal(iso: string) {
-  return upperMeridiem(
-    new Date(iso).toLocaleString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  );
-}
 
 export default async function OrdersPage() {
   if (!isSupabaseConfigured()) {
@@ -118,7 +105,7 @@ export default async function OrdersPage() {
                       <span className="text-foreground/90">
                         {order.counterparty.displayName}
                       </span>{" "}
-                      · {formatLocal(order.slotStart)}
+                      · <LocalDateTime value={order.slotStart} />
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
