@@ -7,6 +7,11 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: seller category picker contrast (2026-10-02)
+
+- Replaced the seller listing form's native category dropdown with an accessible Radix Select. The trigger and popover use the brand's dark surface, legible text, gold focus and selected states, and a short GSAP entrance that respects reduced-motion settings. The same picker serves new and edited listings.
+- Browser regression checks that the menu opens on a phone viewport, its text has at least 4.5:1 contrast, selection persists, and Escape closes it. No new database or payment changes.
+
 ## Phase: on-demand calls and instant settlement (2026-10-02)
 
 - New purchases use `purchase_listing_now`: an approved active service can be booked while the seller has a recent heartbeat and no active on-demand booking or running call. The RPC serializes purchases on the seller profile row, creates a synthetic slot to preserve existing booking relations, holds buyer tokens and notifies the seller in one transaction. Historical scheduled bookings remain readable and joinable.

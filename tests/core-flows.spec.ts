@@ -108,6 +108,34 @@ test("listing shows one on-demand price without scheduled slots", async ({ page 
   expect(errors).toEqual([]);
 });
 
+test("seller category menu is readable and selection works", async ({ page }) => {
+  await authenticate(page.context(), seller);
+  await page.goto("/seller/listings/new");
+  const category = page.getByRole("combobox", { name: "Category" });
+  await category.click();
+  const menu = page.getByTestId("seller-category-menu");
+  const firstOption = page.getByRole("option").first();
+  await expect(menu).toBeVisible();
+  await expect(firstOption).toBeVisible();
+  const contrast = await firstOption.evaluate((option) => {
+    const menu = option.closest('[data-testid="seller-category-menu"]')!;
+    const rgb = (color: string) => [...color.matchAll(/\d+(?:\.\d+)?/g)].slice(0, 3).map((part) => Number(part[0]) / 255);
+    const luminance = (color: string) => rgb(color).map((part) => part <= 0.04045 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, part, index) => sum + part * [0.2126, 0.7152, 0.0722][index], 0);
+    const text = luminance(getComputedStyle(option).color);
+    const background = luminance(getComputedStyle(menu).backgroundColor);
+    return (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05);
+  });
+  expect(contrast).toBeGreaterThanOrEqual(4.5);
+  const firstName = await firstOption.innerText();
+  await firstOption.click();
+  await expect(category).toContainText(firstName);
+  await category.click();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(category).toContainText(firstName);
+});
+
 test("buyer can sign in, book an online seller and join without picking a time", async ({ page }) => {
   await result(admin.from("seller_profiles").update({ last_seen_at: new Date().toISOString() }).eq("user_id", seller.user.id).select("id").single());
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(`/listings/${slug}?slot=${slotId}`)}`);

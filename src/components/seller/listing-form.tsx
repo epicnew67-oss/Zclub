@@ -23,12 +23,7 @@ import {
   updateListingDraftAction,
   submitListingForReviewAction,
 } from "@/app/seller/listings/actions";
-
-export type CategoryOption = {
-  id: string;
-  name: string;
-  slug: string;
-};
+import { SellerCategorySelect, type CategoryOption } from "@/components/seller/seller-category-select";
 
 export type ExistingPhoto = {
   id: string;
@@ -271,19 +266,7 @@ export function ListingForm({ categories, mode }: Props) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <select
-                id="category"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="">Select a category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <SellerCategorySelect categories={categories} value={categoryId} onChange={setCategoryId} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price (tokens)</Label>
