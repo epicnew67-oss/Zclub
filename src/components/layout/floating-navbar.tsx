@@ -140,6 +140,8 @@ export function FloatingNavbar() {
 
   return (
     <>
+      {/* The home hero provides its own clearance for the fixed navigation. */}
+      {pathname !== "/" ? <div aria-hidden className="h-16 shrink-0 md:h-20" /> : null}
       <header
         ref={navRef}
         data-visible="true"

@@ -41,6 +41,11 @@ User requested ownership of the existing Zclub app and fixes for its bugs.
   `20261206000000_payment_state_ordering.sql`.
 - Fixed all 28 baseline lint errors (JSX text, derived UI state and effect/ref
   lifecycle); restricted-storage errors no longer strand the intro overlay.
+- Guest pages reserve space for the fixed navigation so it no longer overlaps
+  the Browse heading on mobile or desktop. The home hero retains its own spacing.
+- Removed the homepage floating-photo swarm at the user's request, including
+  its pinned scrolling, photo query and obsolete styles. The hero uses a static
+  brand gradient behind its existing content and meteor background.
 
 ### Validation
 
@@ -57,7 +62,12 @@ User requested ownership of the existing Zclub app and fixes for its bugs.
   bookings and ledger are preserved, fixture listings are hidden afterwards.
 - Migration applied and race-tested locally, then successfully applied to
   production Supabase after a dry run confirmed it was the only pending migration.
-  Application deployment follows this commit.
+  Commit `2be9416` deployed successfully to `zclub-lime.vercel.app`; live guest
+  smoke checks passed across nine public/protected routes with no page errors
+  or horizontal overflow. Search clearing also passed on production.
+- After removing the floating photos, the build and all nine browser tests
+  passed again. Mobile (390px) and desktop (1280px) checks confirmed no photo
+  swarm or pinned section, working Browse navigation and no heading overlap.
 
 ### Remaining limits / known follow-ups
 

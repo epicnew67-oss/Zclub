@@ -6,7 +6,6 @@ import { useGsap } from "@/hooks/use-gsap";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ImageSwarm, type SwarmImage } from "@/components/home/image-swarm";
 import { HeroMeteors } from "@/components/home/hero-meteors";
 import { ShimmerButton } from "@/components/magic-ui/shimmer-button";
 
@@ -27,49 +26,22 @@ function formatStat(raw: unknown): string {
   return statValue(raw).toLocaleString("en-US");
 }
 
-/**
- * Hero — first viewport of the homepage.
- *
- * Composition: the HeroAtmosphere sits as the atmospheric backdrop
- * (burgundy wash + gold accent + cursor spotlight + edge vignette),
- * the brand content is overlaid as a centered magazine masthead.
- * Generous whitespace + editorial italic type keep the masthead
- * feeling intentional, not template. The earlier swarm-tile grid
- * was removed because the empty rectangles read as unfinished cards.
- *
- * Motion: GSAP entrance timeline staggers the brand content
- * (badge → logo → accent → headline → tagline → CTAs → stats),
- * and triggers the swarm's pop-in via a shared `data-hero-ready`
- * flag once the masthead has settled. Counter ticks up at the end
- * so the eye lands on the numbers last.
- *
- * Counters: `fromTo` pins the start at a numeric 0 (so GSAP never has
- * to parse the locale-formatted SSR string — the old NaN source) and
- * the end value is normalized through `statValue`, so a zero or missing
- * value counts 0 → 0 and renders "0", never "NaN".
- *
- * CTAs: signed-out visitors get "Join now" as the primary action plus
- * a quiet sign-in link — a first-time visitor should immediately see
- * how to get in, not just browse. Signed-in visitors keep the
- * browse/sell pair.
- */
+/** Homepage masthead with entrance animation and normalized live counters. */
 export function HeroSection({
   headline,
   tagline,
   stats,
   signedIn = false,
-  swarmImages = [],
 }: {
   headline: ReactNode;
   tagline: string;
   stats: HeroStat[];
   signedIn?: boolean;
-  swarmImages?: SwarmImage[];
 }) {
   const scopeRef = useGsap<HTMLElement>(({ gsap }) => {
     // Brand-content entrance. Power2 out + small stagger so the
-    // masthead reads as a single cascading reveal. The HeroAtmosphere
-    // + HeroMeteors run on their own timelines so this one only
+    // masthead reads as a single cascading reveal. HeroMeteors runs
+    // on its own timeline so this one only
     // orchestrates the foreground content.
     const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
     tl.from("[data-hero-item]", {
@@ -102,19 +74,14 @@ export function HeroSection({
       ref={scopeRef}
       className="relative isolate min-h-[100svh] overflow-hidden"
     >
-      {/* Primary hero visual — the image swarm sits behind everything
-          else. Pointer-events:none so the masthead stays clickable
-          even when a swarm tile passes under it. */}
-      <ImageSwarm sectionRef={scopeRef} images={swarmImages} />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(102,14,18,0.3),transparent_55%),radial-gradient(ellipse_at_75%_70%,rgba(194,161,123,0.16),transparent_60%)]"
+      />
 
-      {/* Brand-colored meteor shower — the dominant atmospheric
-          layer behind the masthead (replaces the simpler particle
-          field; meteors carry the same role with more sophistication). */}
       <HeroMeteors />
 
-      {/* Brand masthead — centered, generous whitespace, sits
-          above the swarm. Editorial italic headline keeps the
-          tone fashion-magazine rather than SaaS. */}
+      {/* Centered brand masthead above the atmospheric background. */}
       <div className="relative mx-auto flex min-h-[100svh] max-w-5xl flex-col items-center justify-center gap-6 px-4 pt-24 pb-20 text-center md:px-6 md:pt-28 md:pb-28">
         <div data-hero-item className="flex flex-col items-center gap-5 md:gap-6">
           <Badge variant="gold-outline" className="px-3 py-1 text-[10px]">

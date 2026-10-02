@@ -12,7 +12,6 @@ import {
   getCategories,
   getFeaturedListings,
   getHomeStats,
-  getSwarmImages,
 } from "@/lib/browse";
 
 export const metadata: Metadata = {
@@ -39,13 +38,11 @@ export default async function Home() {
     featured,
     categories,
     stats,
-    swarmImages,
   ] = await Promise.all([
     supabase.auth.getUser(),
     getFeaturedListings(4),
     getCategories(),
     getHomeStats(),
-    getSwarmImages(12),
   ]);
 
   // Real counts from the DB; every value is already normalized to a
@@ -69,7 +66,6 @@ export default async function Home() {
         tagline="A curated marketplace of vetted creators — reserve a fixed-price slot, connect in the call, and pay only when it completes."
         stats={heroStats}
         signedIn={Boolean(user)}
-        swarmImages={swarmImages}
       />
       <EditorialCategories categories={categories} />
       <FeaturedStrip listings={featured} />
