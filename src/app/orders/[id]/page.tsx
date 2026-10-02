@@ -5,6 +5,7 @@ import { ArrowLeftIcon, CalendarIcon, CoinsIcon } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { getOrderForUser, listChatMessages } from "@/lib/bookings";
+import { upperMeridiem } from "@/lib/datetime-format";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderChat } from "@/components/orders/order-chat";
 import { OrderStatusHeader } from "@/components/orders/order-status-header";
@@ -23,13 +24,16 @@ export async function generateMetadata({
 }
 
 function formatLocal(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return upperMeridiem(
+    new Date(iso).toLocaleString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  );
 }
 
 export default async function OrderDetailPage({

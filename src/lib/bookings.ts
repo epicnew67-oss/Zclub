@@ -17,6 +17,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { makeListingSlug } from "@/lib/browse";
 
 export type PurchaseResult =
   | { ok: true; bookingId: string; chatId: string }
@@ -246,21 +247,56 @@ export async function sendChatMessage(
 
 // ---------------------------------------------------------------- lists
 
+/**
+ * Listings have NO slug column — a listing's public slug is derived
+ * (`sellerSlug--titleSlug`, see browse.makeListingSlug). Selecting
+ * `listings.slug` makes PostgREST fail the whole query (42703), so the
+ * slug is attached here after the fact.
+ */
+async function attachListingSlugs<T extends { seller_id: string; listing: unknown }>(
+  rows: T[]
+): Promise<Array<T & { listing_slug: string | null }>> {
+  const sellerIds = [...new Set(rows.map((r) => r.seller_id))];
+  const slugByUser = new Map<string, string>();
+  if (sellerIds.length > 0) {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("seller_profiles")
+      .select("user_id, slug")
+      .in("user_id", sellerIds);
+    for (const s of data ?? []) {
+      slugByUser.set(s.user_id as string, s.slug as string);
+    }
+  }
+  return rows.map((row) => {
+    const title =
+      firstOrNull(row.listing as { title: string } | { title: string }[] | null)
+        ?.title ?? "";
+    const sellerSlug = slugByUser.get(row.seller_id) ?? "";
+    return {
+      ...row,
+      listing_slug:
+        title && sellerSlug ? makeListingSlug(sellerSlug, title) : null,
+    };
+  });
+}
+
 export async function listBuyerOrders(userId: string): Promise<OrderRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("bookings")
     .select(
-      `id, status, price_tokens, created_at,
+      `id, status, price_tokens, created_at, seller_id,
        slot:availability_slots(starts_at, ends_at),
-       listing:listings(title, slug),
+       listing:listings(title),
        seller:profiles!bookings_seller_id_fkey(id, display_name)`
     )
     .eq("buyer_id", userId)
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) return [];
-  return (data ?? []).map((r) => normalizeOrderRow(r, "buyer"));
+  const rows = await attachListingSlugs((data ?? []) as RawBooking[]);
+  return rows.map((r) => normalizeOrderRow(r, "buyer"));
 }
 
 export async function listSellerOrders(userId: string): Promise<OrderRow[]> {
@@ -268,16 +304,17 @@ export async function listSellerOrders(userId: string): Promise<OrderRow[]> {
   const { data, error } = await admin
     .from("bookings")
     .select(
-      `id, status, price_tokens, created_at,
+      `id, status, price_tokens, created_at, seller_id,
        slot:availability_slots(starts_at, ends_at),
-       listing:listings(title, slug),
+       listing:listings(title),
        buyer:profiles!bookings_buyer_id_fkey(id, display_name)`
     )
     .eq("seller_id", userId)
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) return [];
-  return (data ?? []).map((r) => normalizeOrderRow(r, "seller"));
+  const rows = await attachListingSlugs((data ?? []) as RawBooking[]);
+  return rows.map((r) => normalizeOrderRow(r, "seller"));
 }
 
 type RawBooking = {
@@ -285,8 +322,10 @@ type RawBooking = {
   status: string;
   price_tokens: number;
   created_at: string;
+  seller_id: string;
+  listing_slug?: string | null;
   slot: { starts_at: string; ends_at: string } | { starts_at: string; ends_at: string }[] | null;
-  listing: { title: string; slug: string | null } | { title: string; slug: string | null }[] | null;
+  listing: { title: string } | { title: string }[] | null;
   seller?: { display_name: string } | { display_name: string }[] | null;
   buyer?: { id: string; display_name: string } | { id: string; display_name: string }[] | null;
 };
@@ -314,7 +353,7 @@ function normalizeOrderRow(row: RawBooking, role: "buyer" | "seller"): OrderRow 
   return {
     id: row.id,
     listingTitle: listing?.title ?? "Listing",
-    listingSlug: listing?.slug ?? null,
+    listingSlug: row.listing_slug ?? null,
     priceTokens: row.price_tokens,
     status: row.status,
     slotStart: slot?.starts_at ?? row.created_at,
@@ -337,7 +376,7 @@ export async function getOrderForUser(
     .select(
       `id, buyer_id, seller_id, listing_id, slot_id, price_tokens, status, created_at,
        slot:availability_slots(starts_at, ends_at),
-       listing:listings(id, title, slug),
+       listing:listings(id, title),
        buyer:profiles!bookings_buyer_id_fkey(id, display_name),
        seller:profiles!bookings_seller_id_fkey(id, display_name)`
     )
@@ -373,8 +412,8 @@ export async function getOrderForUser(
     | { starts_at: string; ends_at: string }[]
     | null;
   const listing = booking.listing as unknown as
-    | { id: string; title: string; slug: string }
-    | { id: string; title: string; slug: string }[]
+    | { id: string; title: string }
+    | { id: string; title: string }[]
     | null;
   const sellerRow = firstOrNull(sellerProfile);
   const buyerRow = firstOrNull(buyerProfile);
@@ -393,7 +432,11 @@ export async function getOrderForUser(
     listing: {
       id: listingRow?.id ?? booking.listing_id,
       title: listingRow?.title ?? "Listing",
-      slug: listingRow?.slug ?? "",
+      // Derived slug (listings has no slug column).
+      slug:
+        listingRow?.title && sp?.slug
+          ? makeListingSlug(sp.slug, listingRow.title)
+          : "",
     },
     buyer: {
       id: booking.buyer_id,

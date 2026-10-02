@@ -2,16 +2,20 @@ import { ClockIcon, CoinsIcon, ShieldCheckIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CancelBookingButton } from "@/components/orders/cancel-booking-button";
 import { ReportProblemButton } from "@/components/orders/report-problem-button";
+import { upperMeridiem } from "@/lib/datetime-format";
 import type { OrderDetail } from "@/lib/bookings";
 
 function formatLocal(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return upperMeridiem(
+    new Date(iso).toLocaleString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  );
 }
 
 function durationMinutes(startsIso: string, endsIso: string) {

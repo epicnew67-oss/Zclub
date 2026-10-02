@@ -7,7 +7,34 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
-## Phase: booking purchase fix — session client for user RPCs (this phase)
+## Phase: order pages 404 — listings.slug doesn't exist (this phase)
+
+User booked a slot (tokens held ✓) but `/orders/<id>` showed the 404
+page.
+
+### Root cause
+
+The order queries selected `listing:listings(title, slug)` — but
+`listings` has **no `slug` column** (public slugs are derived:
+`sellerSlug--titleSlug`, see `makeListingSlug`). PostgREST fails the
+whole query with 42703, so:
+- `getOrderForUser` returned null → **every order detail page 404'd**
+- `listBuyerOrders` / `listSellerOrders` returned [] → order lists empty
+
+### Done
+
+- Dropped `slug` from the listing embeds; the slug is now derived after
+  the fetch via `attachListingSlugs()` (batch seller_profiles lookup +
+  `makeListingSlug`) for the lists, and from the already-fetched seller
+  profile in `getOrderForUser`.
+- AM/PM (uppercase, hour12) now applied to the order pages' timestamps too.
+- New `scripts/verify-orders-pages.mjs` (6 checks): real booking →
+  buyer `/orders` lists it, `/orders/<id>` renders 200 with the listing
+  (not the 404 page), seller `/seller/orders` lists it. All pass; all 8
+  suites green. Verified the fixed queries against production data (the
+  user's live booking d0283c22 now resolves).
+
+## Phase: booking purchase fix — session client for user RPCs
 
 User: "it says purchase failed when i try to book a slot."
 

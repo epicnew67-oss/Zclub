@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSellerStatus } from "@/lib/seller";
 import { listSellerOrders } from "@/lib/bookings";
+import { upperMeridiem } from "@/lib/datetime-format";
 import { SellerSidebar, SellerMobileNav } from "@/components/seller/seller-sidebar";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { AuthCard } from "@/components/auth/auth-card";
@@ -17,13 +18,16 @@ import { Separator } from "@/components/ui/separator";
 export const metadata: Metadata = { title: "Seller orders" };
 
 function formatLocal(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return upperMeridiem(
+    new Date(iso).toLocaleString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  );
 }
 
 export default async function SellerOrdersPage() {

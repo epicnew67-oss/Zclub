@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { listBuyerOrders } from "@/lib/bookings";
+import { upperMeridiem } from "@/lib/datetime-format";
 import { AuthCard } from "@/components/auth/auth-card";
 import { BalanceChip } from "@/components/wallet/balance-chip";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
@@ -22,13 +23,16 @@ import { Separator } from "@/components/ui/separator";
 export const metadata: Metadata = { title: "Your orders" };
 
 function formatLocal(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return upperMeridiem(
+    new Date(iso).toLocaleString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  );
 }
 
 export default async function OrdersPage() {
