@@ -200,11 +200,20 @@
   position: relative;
   inset: auto;
   width: 100%;
-  height: calc(100% - 3rem);
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
   max-width: none;
   grid-template-rows: minmax(0, 1fr) auto;
   border: 0;
   background: transparent;
+}
+
+.zclub-call-chat .lk-chat-messages {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .zclub-call-chat .lk-chat-header {

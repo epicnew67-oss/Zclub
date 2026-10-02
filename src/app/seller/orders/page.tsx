@@ -65,7 +65,7 @@ export default async function SellerOrdersPage() {
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Bookings on your listings. Open one to chat with the buyer or
-              release tokens once the call completes.
+              join the video call. Earnings arrive automatically when it ends.
             </p>
           </div>
           <div className="rounded-full border border-gold/40 bg-gold/5 px-4 py-1.5 text-sm">
@@ -85,7 +85,7 @@ export default async function SellerOrdersPage() {
                 <ShoppingBagIcon className="size-5 text-gold" /> No bookings yet
               </CardTitle>
               <CardDescription>
-                When a buyer reserves one of your slots, it lands here.
+                When a buyer books one of your services, it lands here.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -115,11 +115,11 @@ export default async function SellerOrdersPage() {
                         <span className="text-foreground/90">
                           {order.counterparty.displayName}
                         </span>{" "}
-                        · <LocalDateTime value={order.slotStart} />
+                        · {order.isOnDemand ? "On-demand call" : <LocalDateTime value={order.slotStart} />}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <OrderStatusBadge status={order.status} role="seller" />
+                      <OrderStatusBadge status={order.status} role="seller" isOnDemand={order.isOnDemand} />
                       <span className="font-medium text-foreground tabular-nums">
                         {order.priceTokens.toLocaleString()}
                       </span>

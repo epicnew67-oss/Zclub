@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
  * First click arms the confirmation; second click fires the server
  * action. Esc or clicking elsewhere collapses it. No dialog dependency.
  */
-export function CancelBookingButton({ bookingId, role, priceTokens }: { bookingId: string; role: "buyer" | "seller"; priceTokens: number }) {
+export function CancelBookingButton({ bookingId, role, priceTokens, isOnDemand = false }: { bookingId: string; role: "buyer" | "seller"; priceTokens: number; isOnDemand?: boolean }) {
   const router = useRouter();
   const [armed, setArmed] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -63,7 +63,7 @@ export function CancelBookingButton({ bookingId, role, priceTokens }: { bookingI
   return (
     <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-2 py-1 text-xs">
       <span className="text-destructive">
-        {role === "seller" ? `Cancel and refund the buyer ${priceTokens} tokens?` : "Cancel this order? Your refund follows the cancellation policy."}
+        {role === "seller" ? `Cancel and refund the buyer ${priceTokens} tokens?` : isOnDemand ? `Cancel and refund ${priceTokens} tokens now?` : "Cancel this order? Your refund follows the cancellation policy."}
       </span>
       <Button
         type="button"

@@ -2,9 +2,9 @@
  * Post-call money flow tests — `npm run test:post-call-money`.
  *
  * Covers the spec's done-when criteria:
- *   A. Commission math: 15% of 500 = seller gets 425.
+ *   A. Immediate commission math: 10% of 500 = seller 450, owner 50.
  *   B. Release idempotency (sweep-safe).
- *   C. Release blocked before the 24h window.
+ *   C. Release is immediate even when the call just ended.
  *   D. Release blocked when status is not 'completed'.
  *   E. Open dispute freezes escrow (release returns frozen_dispute).
  *   F. Resolve dispute → refund_buyer (100% to buyer).
@@ -210,6 +210,7 @@ async function createCompletedBooking({
   durationMinutes = 30,
   slotOffsetMin = 4,
   liveEndedMinutesAgo = null,
+  leaveLive = false,
 }) {
   await creditWallet(buyer.userId, priceTokens * 2);
   const listingId = await makeApprovedListing(seller.sellerProfileId, priceTokens, durationMinutes);
@@ -223,8 +224,8 @@ async function createCompletedBooking({
   await admin
     .from("bookings")
     .update({
-      status: "completed",
-      live_ended_at: ended,
+      status: leaveLive ? "live" : "completed",
+      live_ended_at: leaveLive ? null : ended,
       live_started_at: new Date(
         Date.now() - ((liveEndedMinutesAgo ?? 60) + 1) * 60_000
       ).toISOString(),
@@ -247,7 +248,7 @@ async function walletBalance(userId) {
 // ---------------------------------------------------------------- cases
 
 async function caseA_releaseMath() {
-  console.log("\n== Case A: release math (15% commission) ==");
+  console.log("\n== Case A: immediate release math (10% commission) ==");
   const seller = await makeApprovedSeller("pcm-test-seller");
   const buyer = await makeBuyer("pcm-test-buyer");
   const { bookingId } = await createCompletedBooking({
@@ -259,32 +260,29 @@ async function caseA_releaseMath() {
     liveEndedMinutesAgo: 30 * 60, // 30h ago — past the 24h window
   });
 
-  const beforeSeller = await walletBalance(seller.userId);
+  const { data: ownerRows } = await admin.from("user_roles").select("user_id").eq("role", "owner").order("created_at").limit(1);
+  const ownerId = ownerRows?.[0]?.user_id;
+  const ownerEntries = await admin.from("ledger_entries").select("amount").eq("ref_id", bookingId).eq("ref_type", "platform_commission");
   const res = await admin.rpc("release_escrow", { _booking_id: bookingId });
   const data = res.data ?? {};
-  check("A.1 release ok", data.ok === true, JSON.stringify(data));
+  check("A.1 release already completed", data.ok === true && data.already_released === true, JSON.stringify(data));
   check(
-    "A.2 seller_credit = 425 (15% of 500)",
-    data.seller_credit === 425,
-    `got=${data.seller_credit}`
+    "A.2 seller ledger credit = 450",
+    (await admin.from("ledger_entries").select("amount").eq("ref_id", bookingId).eq("ref_type", "booking_release")).data?.[0]?.amount === 450
   );
   await assertAudit("%release%", bookingId, "A.2.audit release audit row exists");
   check(
-    "A.3 commission_pct = 15",
-    data.commission_pct === 15,
-    `got=${data.commission_pct}`
+    "A.3 owner role exists",
+    Boolean(ownerId)
   );
   check(
-    "A.4 commission_tokens = 75",
-    data.commission_tokens === 75,
-    `got=${data.commission_tokens}`
+    "A.4 owner commission ledger = 50",
+    ownerEntries.data?.length === 1 && ownerEntries.data[0].amount === 50
   );
 
-  const afterSeller = await walletBalance(seller.userId);
   check(
-    "A.5 seller wallet +425",
-    afterSeller - beforeSeller === 425,
-    `before=${beforeSeller} after=${afterSeller}`
+    "A.5 seller wallet contains immediate 450 credit",
+    (await walletBalance(seller.userId)) >= 450
   );
 
   const { data: b } = await admin
@@ -330,7 +328,7 @@ async function caseB_releaseIdempotent() {
 }
 
 async function caseC_releaseTooEarly() {
-  console.log("\n== Case C: release blocked before window ==");
+  console.log("\n== Case C: immediate release without a window ==");
   const seller = await makeApprovedSeller("pcm-test-seller");
   const buyer = await makeBuyer("pcm-test-buyer");
   const { bookingId } = await createCompletedBooking({
@@ -340,13 +338,13 @@ async function caseC_releaseTooEarly() {
   });
   const res = await admin.rpc("release_escrow", { _booking_id: bookingId });
   check(
-    "C.1 window_not_elapsed",
-    res.data?.code === "window_not_elapsed",
+    "C.1 already released",
+    res.data?.already_released === true,
     JSON.stringify(res.data)
   );
   check(
-    "C.2 releasable_at populated",
-    typeof res.data?.releasable_at === "string"
+    "C.2 no release window",
+    !res.data?.releasable_at
   );
 }
 
@@ -357,13 +355,11 @@ async function caseD_releaseWrongState() {
   const { bookingId } = await createCompletedBooking({
     seller,
     buyer,
-    liveEndedMinutesAgo: 30 * 60,
+    leaveLive: true,
   });
-  // Force status back to 'paid' (the booking was 'completed' from setup).
-  await admin.from("bookings").update({ status: "paid" }).eq("id", bookingId);
   const res = await admin.rpc("release_escrow", { _booking_id: bookingId });
   check(
-    "D.1 wrong_state when paid",
+    "D.1 wrong_state when live",
     res.data?.code === "wrong_state",
     JSON.stringify(res.data)
   );
@@ -376,7 +372,7 @@ async function caseE_disputeFreezesEscrow() {
   const { bookingId } = await createCompletedBooking({
     seller,
     buyer,
-    liveEndedMinutesAgo: 30 * 60,
+    leaveLive: true,
   });
   const open = await buyer.client.rpc("open_dispute", {
     _booking_id: bookingId,
@@ -412,7 +408,7 @@ async function caseF_resolveRefund() {
     seller,
     buyer,
     priceTokens: 500,
-    liveEndedMinutesAgo: 30 * 60,
+    leaveLive: true,
   });
   const open = await buyer.client.rpc("open_dispute", {
     _booking_id: bookingId,
@@ -464,7 +460,7 @@ async function caseG_resolveRelease() {
     seller,
     buyer,
     priceTokens: 1000,
-    liveEndedMinutesAgo: 30 * 60,
+    leaveLive: true,
   });
   const open = await buyer.client.rpc("open_dispute", {
     _booking_id: bookingId,
@@ -484,16 +480,16 @@ async function caseG_resolveRelease() {
   check("G.1 resolve ok", res.data?.ok === true);
   await assertAudit("%dispute%", bookingId, "G.1.audit dispute audit row exists");
   check(
-    "G.2 seller_credit = 850 (1000 * 0.85)",
-    res.data?.seller_credit === 850,
+    "G.2 seller_credit = 900 (1000 * 0.9)",
+    res.data?.seller_credit === 900,
     `got=${res.data?.seller_credit}`
   );
   check("G.3 buyer_credit = 0", res.data?.buyer_credit === 0);
 
   const afterSeller = await walletBalance(seller.userId);
   check(
-    "G.4 seller wallet +850",
-    afterSeller - beforeSeller === 850,
+    "G.4 seller wallet +900",
+    afterSeller - beforeSeller === 900,
     `${beforeSeller} → ${afterSeller}`
   );
 }
@@ -506,7 +502,7 @@ async function caseH_resolveSplit() {
     seller,
     buyer,
     priceTokens: 1000,
-    liveEndedMinutesAgo: 30 * 60,
+    leaveLive: true,
   });
   const open = await buyer.client.rpc("open_dispute", {
     _booking_id: bookingId,
@@ -529,8 +525,8 @@ async function caseH_resolveSplit() {
   await assertAudit("%dispute%", bookingId, "H.1.audit dispute audit row exists");
   check("H.2 buyer_credit = 500 (50% of 1000)", res.data?.buyer_credit === 500);
   check(
-    "H.3 seller_credit = 425 (50% * 1000 * 0.85)",
-    res.data?.seller_credit === 425,
+    "H.3 seller_credit = 450 (50% * 1000 * 0.9)",
+    res.data?.seller_credit === 450,
     `got=${res.data?.seller_credit}`
   );
 
@@ -542,8 +538,8 @@ async function caseH_resolveSplit() {
     `${beforeBuyer} → ${afterBuyer}`
   );
   check(
-    "H.5 seller +425",
-    afterSeller - beforeSeller === 425,
+    "H.5 seller +450",
+    afterSeller - beforeSeller === 450,
     `${beforeSeller} → ${afterSeller}`
   );
 }

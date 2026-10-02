@@ -11,7 +11,7 @@ import { getCategories, listBrowseListings, type BrowseSort } from "@/lib/browse
 export const metadata: Metadata = {
   title: "Browse",
   description:
-    "Discover sellers offering 1:1 video calls. Filter by category, sort by price or duration.",
+    "Discover sellers offering on-demand 1:1 video calls. Filter by category and sort by price.",
 };
 
 const VALID_SORTS: BrowseSort[] = [

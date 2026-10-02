@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   cancelBooking,
   purchaseSlot,
+  purchaseListingNow,
   sendChatMessage,
   type PurchaseResult,
   type CancelResult,
@@ -35,6 +36,20 @@ export async function purchaseSlotAction(slotId: string): Promise<PurchaseResult
   const result = await purchaseSlot(slotId);
   if (result.ok) {
     revalidatePath("/orders");
+    revalidatePath(`/orders/${result.bookingId}`);
+  }
+  return result;
+}
+
+export async function purchaseListingNowAction(listingId: string): Promise<PurchaseResult> {
+  if (!listingId) return { ok: false, code: "listing_unavailable" };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, code: "listing_unavailable" };
+  const result = await purchaseListingNow(listingId);
+  if (result.ok) {
+    revalidatePath("/orders");
+    revalidatePath("/seller/orders");
     revalidatePath(`/orders/${result.bookingId}`);
   }
   return result;

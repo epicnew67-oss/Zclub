@@ -33,6 +33,7 @@ type RpcResult =
       ends_at: string;
       role: "buyer" | "seller";
       identity: string;
+      is_on_demand: boolean;
     }
   | { ok: false; code: string; [k: string]: unknown };
 
@@ -164,6 +165,7 @@ export default async function CallPage({
       role={result.role}
       endsAt={result.ends_at}
       bookingId={bookingId}
+      isOnDemand={result.is_on_demand}
     />
   );
 }

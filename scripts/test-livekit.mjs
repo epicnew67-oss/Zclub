@@ -376,8 +376,8 @@ async function case5_webhookIdempotency() {
     .eq("id", bookingId)
     .maybeSingle();
   check(
-    "5.8 booking still completed (no double transition)",
-    after2?.status === "completed",
+    "5.8 booking released immediately (no double transition)",
+    after2?.status === "released",
     `status=${after2?.status}`
   );
 

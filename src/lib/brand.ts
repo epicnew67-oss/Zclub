@@ -18,7 +18,7 @@ export const brand = {
   domain: "stripclubonline.store",
   tagline: "Exclusive 1:1 video moments, booked in tokens.",
   description:
-    "StripClub is a marketplace where sellers list fixed-price 1:1 video call slots and buyers purchase them with site tokens.",
+    "StripClub is a marketplace for on-demand 1:1 video calls. Buy tokens, choose an available seller, and join your call.",
   colors: {
     // Surfaces
     bg: "#0A0506", // near-black base (subtle burgundy glow applied in layout)

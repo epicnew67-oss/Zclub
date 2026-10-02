@@ -42,6 +42,7 @@ export function OrderChat({
   buyerName,
   sellerName,
   status,
+  isOnDemand = false,
   slotStartsAt,
   slotEndsAt,
   initialMessages,
@@ -54,6 +55,7 @@ export function OrderChat({
   buyerName: string;
   sellerName: string;
   status: string;
+  isOnDemand?: boolean;
   slotStartsAt: string;
   slotEndsAt: string;
   initialMessages: Msg[];
@@ -191,6 +193,7 @@ export function OrderChat({
           slotStartsAt={slotStartsAt}
           slotEndsAt={slotEndsAt}
           status={status}
+          isOnDemand={isOnDemand}
         />
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-0">

@@ -6,8 +6,6 @@ const SORT_OPTIONS: { value: BrowseSort | ""; label: string }[] = [
   { value: "", label: "Newest" },
   { value: "price_asc", label: "Price: low to high" },
   { value: "price_desc", label: "Price: high to low" },
-  { value: "duration_asc", label: "Shortest first" },
-  { value: "duration_desc", label: "Longest first" },
 ];
 
 export function BrowseToolbar({

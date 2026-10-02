@@ -24,11 +24,13 @@ export function JoinCallButton({
   slotStartsAt,
   slotEndsAt,
   status,
+  isOnDemand = false,
 }: {
   bookingId: string;
   slotStartsAt: string;
   slotEndsAt: string;
   status: string;
+  isOnDemand?: boolean;
 }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -44,18 +46,18 @@ export function JoinCallButton({
   const opensAt = start - CALL_OPENS_BEFORE_MINUTES * 60_000;
   const graceEnd = end + CALL_GRACE_MINUTES * 60_000;
   const finalized = !["paid", "scheduled", "live"].includes(status);
-  const canJoin = !finalized && now >= opensAt && now <= graceEnd;
+  const canJoin = !finalized && (isOnDemand || (now >= opensAt && now <= graceEnd));
 
   let label = "Join call";
   let disabledReason: string | null = null;
   if (finalized) {
     label = "Call ended";
     disabledReason = "This order is finalized.";
-  } else if (now < opensAt) {
+  } else if (!isOnDemand && now < opensAt) {
     const minutes = Math.max(1, Math.ceil((opensAt - now) / 60_000));
     label = `Opens in ${minutes} min`;
     disabledReason = `The call opens ${CALL_OPENS_BEFORE_MINUTES} minutes before the scheduled start.`;
-  } else if (now > graceEnd) {
+  } else if (!isOnDemand && now > graceEnd) {
     label = "Call ended";
     disabledReason = "The scheduled call window has passed.";
   }

@@ -65,7 +65,7 @@ export default async function OrderDetailPage({
           <Badge variant={order.role === "buyer" ? "gold-outline" : "outline"}>
             {order.role === "buyer" ? "Buying" : "Selling"}
           </Badge>
-          <OrderStatusBadge status={order.status} role={order.role} />
+          <OrderStatusBadge status={order.status} role={order.role} isOnDemand={order.isOnDemand} />
           <span className="text-xs text-muted-foreground">Order {order.id.slice(0, 8)}</span>
         </div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
@@ -77,7 +77,7 @@ export default async function OrderDetailPage({
             {order.role === "buyer" ? order.seller.displayName : order.buyer.displayName}
           </span>{" "}
           · <CalendarIcon className="inline size-3.5 align-text-bottom" />{" "}
-          <LocalDateTime value={order.slot.startsAt} />
+          {order.isOnDemand ? "Available to join" : <LocalDateTime value={order.slot.startsAt} />}
         </p>
       </header>
 
@@ -92,6 +92,7 @@ export default async function OrderDetailPage({
         buyerName={order.buyer.displayName}
         sellerName={order.seller.displayName}
         status={order.status}
+        isOnDemand={order.isOnDemand}
         slotStartsAt={order.slot.startsAt}
         slotEndsAt={order.slot.endsAt}
         initialMessages={initialMessages}

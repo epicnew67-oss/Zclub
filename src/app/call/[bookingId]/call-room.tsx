@@ -36,6 +36,7 @@ export function CallRoom({
   role,
   endsAt,
   bookingId,
+  isOnDemand = false,
 }: {
   token: string;
   url: string;
@@ -43,6 +44,7 @@ export function CallRoom({
   role: Role;
   endsAt: string;
   bookingId: string;
+  isOnDemand?: boolean;
 }) {
   // Pre-join holds the camera/mic preview + device picker before the
   // LiveKit room is connected. Once the user clicks "Join", we hand
@@ -98,7 +100,7 @@ export function CallRoom({
       data-lk-theme="default"
       style={{ height: "100%", width: "100%" }}
     >
-      <InCall role={role} endsAt={endsAt} bookingId={bookingId} />
+      <InCall role={role} endsAt={endsAt} bookingId={bookingId} isOnDemand={isOnDemand} />
     </LiveKitRoom>
   ) : (
     <PreJoin
@@ -149,10 +151,12 @@ function InCall({
   role,
   endsAt,
   bookingId,
+  isOnDemand,
 }: {
   role: Role;
   endsAt: string;
   bookingId: string;
+  isOnDemand: boolean;
 }) {
   const endsAtMs = useMemo(() => new Date(endsAt).getTime(), [endsAt]);
   const [now, setNow] = useState(() => Date.now());
@@ -199,14 +203,14 @@ function InCall({
           <VideoIcon className="hidden size-3.5 text-gold sm:block" />
           <span className="truncate">{role === "buyer" ? "Buying" : "Selling"} · Call open</span>
         </span>
-        <span
+        {!isOnDemand ? <span
           data-testid="time-left"
           data-warning={warning ? "true" : "false"}
           className="font-mono text-sm"
         >
           {disconnected ? "00:00" : remainingStr}
           {warning ? " · wrapping up" : ""}
-        </span>
+        </span> : <span className="text-xs font-semibold text-success">Live call</span>}
       </div>
 
       <div className="relative flex min-h-0 flex-1 items-stretch overflow-hidden">
@@ -217,8 +221,8 @@ function InCall({
         </div>
         <RoomAudioRenderer />
         {chatOpen ? (
-          <div role="dialog" aria-modal="false" aria-label="Call chat" className="absolute inset-x-3 bottom-3 z-20 h-[min(62dvh,30rem)] overflow-hidden rounded-2xl border border-gold/25 bg-[#170e10] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:h-auto md:w-[360px] md:rounded-none md:border-y-0 md:border-r-0">
-            <div className="flex h-12 items-center justify-between border-b border-gold/20 px-4">
+          <div role="dialog" aria-modal="false" aria-label="Call chat" className="absolute inset-0 z-20 flex min-h-0 flex-col overflow-hidden border-l border-gold/25 bg-[#170e10] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:w-[360px]">
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-gold/20 px-4">
               <div><p className="text-sm font-semibold text-foreground">Call chat</p><p className="text-[11px] text-muted-foreground">Messages in this call are temporary.</p></div>
               <button type="button" aria-label="Close call chat" onClick={() => setChatOpen(false)} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-white/10 hover:text-foreground"><XIcon className="size-4" /></button>
             </div>

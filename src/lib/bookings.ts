@@ -23,6 +23,7 @@ export type PurchaseResult =
   | { ok: true; bookingId: string; chatId: string }
   | { ok: false; code: "INSUFFICIENT_BALANCE"; have: number; need: number; shortfall: number }
   | { ok: false; code: "slot_already_taken" }
+  | { ok: false; code: "seller_offline" | "seller_busy" }
   | { ok: false; code: "purchase_failed" }
   | {
       ok: false;
@@ -52,6 +53,7 @@ export type OrderRow = {
   listingSlug: string | null;
   priceTokens: number;
   status: string;
+  isOnDemand?: boolean;
   slotStart: string;
   slotEnd: string;
   counterparty: { displayName: string; slug: string | null };
@@ -69,6 +71,9 @@ export type OrderDetail = {
   chatId: string;
   role: "buyer" | "seller";
   callStarted: boolean;
+  isOnDemand: boolean;
+  buyerJoinedAt: string | null;
+  sellerJoinedAt: string | null;
 };
 
 type PurchaseRpcRow = {
@@ -169,12 +174,31 @@ export async function purchaseSlot(slotId: string): Promise<PurchaseResult> {
   }
 }
 
+export async function purchaseListingNow(listingId: string): Promise<PurchaseResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("purchase_listing_now", {
+    _listing_id: listingId,
+  } as never);
+  if (error) {
+    const insuff = error.message.match(/INSUFFICIENT_BALANCE have=(\d+), need=(\d+), shortfall=(\d+)/);
+    if (insuff) return { ok: false, code: "INSUFFICIENT_BALANCE", have: Number(insuff[1]), need: Number(insuff[2]), shortfall: Number(insuff[3]) };
+    return { ok: false, code: "purchase_failed" };
+  }
+  const row = (data ?? {}) as PurchaseRpcRow;
+  if (row.ok && row.booking_id && row.chat_id) return { ok: true, bookingId: row.booking_id, chatId: row.chat_id };
+  if (row.code === "INSUFFICIENT_BALANCE") return { ok: false, code: "INSUFFICIENT_BALANCE", have: row.have ?? 0, need: row.need ?? 0, shortfall: row.shortfall ?? 0 };
+  if (row.code === "seller_offline" || row.code === "seller_busy") return { ok: false, code: row.code };
+  if (row.code === "cannot_self_book") return { ok: false, code: "cannot_self_book" };
+  return { ok: false, code: "listing_unavailable" };
+}
+
 // ---------------------------------------------------------------- cancel
 
 export async function cancelBooking(bookingId: string): Promise<CancelResult> {
   // cancel_booking resolves the role from auth.uid() — session client.
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("cancel_booking", {
+  const { data: booking } = await supabase.from("bookings").select("is_on_demand").eq("id", bookingId).maybeSingle();
+  const { data, error } = await supabase.rpc(booking?.is_on_demand ? "cancel_on_demand_booking" : "cancel_booking", {
     _booking_id: bookingId,
   } as never);
   if (error) return { ok: false, code: "not_found" };
@@ -290,7 +314,7 @@ export async function listBuyerOrders(userId: string): Promise<OrderRow[]> {
   const { data, error } = await admin
     .from("bookings")
     .select(
-      `id, status, price_tokens, created_at, seller_id,
+      `id, status, is_on_demand, price_tokens, created_at, seller_id,
        slot:availability_slots(starts_at, ends_at),
        listing:listings(title),
        seller:profiles!bookings_seller_id_fkey(id, display_name)`
@@ -308,7 +332,7 @@ export async function listSellerOrders(userId: string): Promise<OrderRow[]> {
   const { data, error } = await admin
     .from("bookings")
     .select(
-      `id, status, price_tokens, created_at, seller_id,
+      `id, status, is_on_demand, price_tokens, created_at, seller_id,
        slot:availability_slots(starts_at, ends_at),
        listing:listings(title),
        buyer:profiles!bookings_buyer_id_fkey(id, display_name)`
@@ -324,6 +348,7 @@ export async function listSellerOrders(userId: string): Promise<OrderRow[]> {
 type RawBooking = {
   id: string;
   status: string;
+  is_on_demand: boolean;
   price_tokens: number;
   created_at: string;
   seller_id: string;
@@ -360,6 +385,7 @@ function normalizeOrderRow(row: RawBooking, role: "buyer" | "seller"): OrderRow 
     listingSlug: row.listing_slug ?? null,
     priceTokens: row.price_tokens,
     status: row.status,
+    isOnDemand: row.is_on_demand,
     slotStart: slot?.starts_at ?? row.created_at,
     slotEnd: slot?.ends_at ?? row.created_at,
     counterparty,
@@ -378,7 +404,7 @@ export async function getOrderForUser(
   const { data: booking, error } = await admin
     .from("bookings")
     .select(
-      `id, buyer_id, seller_id, listing_id, slot_id, price_tokens, status, created_at,
+      `id, buyer_id, seller_id, listing_id, slot_id, price_tokens, status, is_on_demand, created_at,
        buyer_joined_at, seller_joined_at, live_started_at,
        slot:availability_slots(starts_at, ends_at),
        listing:listings(id, title),
@@ -455,6 +481,9 @@ export async function getOrderForUser(
     chatId: chat.id,
     role: booking.buyer_id === userId ? "buyer" : "seller",
     callStarted: Boolean(booking.buyer_joined_at || booking.seller_joined_at || booking.live_started_at),
+    isOnDemand: booking.is_on_demand,
+    buyerJoinedAt: booking.buyer_joined_at,
+    sellerJoinedAt: booking.seller_joined_at,
   };
 }
 

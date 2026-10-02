@@ -460,7 +460,7 @@ async function caseH_settingsOwnership() {
   // Restore the default commission so we don't pollute later test runs.
   await ownerClient.rpc("admin_settings_update", {
     _key: "commission",
-    _value: { pct: 15 },
+    _value: { pct: 10 },
   });
 }
 

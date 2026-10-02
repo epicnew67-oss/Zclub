@@ -41,6 +41,15 @@ export function BalanceChip({
   useEffect(() => {
     if (!walletId || !signedIn) return;
     const supabase = createClient();
+    let active = true;
+    const refresh = async () => {
+      const { data } = await supabase.rpc("get_own_wallet_balance");
+      if (active && typeof data === "number") setBalance(data);
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, 10_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
     const channel = supabase
       // The navbar and page header can each render a BalanceChip. Supabase
       // reuses channels with the same topic, so each mounted subscription
@@ -59,8 +68,7 @@ export function BalanceChip({
           // Recompute the authoritative balance from the RPC rather
           // than applying the delta — if the event drops or arrives
           // out of order, the RPC sum is the source of truth.
-          const { data } = await supabase.rpc("get_own_wallet_balance");
-          if (typeof data === "number") setBalance(data);
+          await refresh();
           if (pulseTimer.current) clearTimeout(pulseTimer.current);
           setPulse(newAmount >= 0 ? "up" : "down");
           pulseTimer.current = setTimeout(() => setPulse(null), 700);
@@ -68,6 +76,10 @@ export function BalanceChip({
       )
       .subscribe();
     return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
       if (pulseTimer.current) clearTimeout(pulseTimer.current);
       supabase.removeChannel(channel);
     };

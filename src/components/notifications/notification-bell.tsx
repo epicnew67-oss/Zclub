@@ -8,6 +8,7 @@ import { useNotifications, type NotificationRow } from "@/hooks/use-notification
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
 import { LocalDateTime } from "@/components/local-date-time";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import { notificationAlert } from "@/components/ui/notification-alert";
 
 const SOUND_KEY = "zclub-booking-sound";
 const ACK_KEY = "zclub-booking-alert-ack";
@@ -27,6 +28,20 @@ export function NotificationBell({ initialRows, initialUnread, isSeller = false 
   });
   const rootRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
+  const seenRef = useRef<Set<string>>(new Set(initialRows.map((row) => row.id)));
+
+  useEffect(() => {
+    for (const row of rows) {
+      if (seenRef.current.has(row.id)) continue;
+      seenRef.current.add(row.id);
+      notificationAlert({
+        variant: isBooking(row) ? "success" : row.type === "dispute" ? "warning" : "info",
+        title: row.title,
+        body: row.body,
+        link: row.link ? safeRedirectPath(row.link, "/notifications") : null,
+      });
+    }
+  }, [rows]);
 
   useEffect(() => {
     if (!isSeller) return;
@@ -142,7 +157,7 @@ export function NotificationBell({ initialRows, initialUnread, isSeller = false 
           <ul className="min-h-0 overflow-y-auto">
             {rows.length === 0 ? <li className="px-5 py-10 text-center text-sm text-muted-foreground">No notifications yet.</li> : null}
             {rows.map((row) => (
-              <li key={row.id} className={`border-b border-border/70 px-5 py-4 last:border-0 ${!row.read_at ? "border-l-[3px] border-l-gold bg-gold/5" : "border-l-[3px] border-l-transparent"}`}>
+              <li key={row.id} className={`m-2 rounded-lg border p-4 shadow-sm ${!row.read_at ? "border-gold/40 bg-gold/5" : "border-border bg-background"}`}>
                 <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 text-sm font-semibold leading-snug text-foreground">{row.title}</h3>{!row.read_at ? <span className="shrink-0 rounded bg-gold/15 px-1.5 py-0.5 text-[11px] font-medium text-gold">New</span> : null}</div>
                 {row.body ? <p className="mt-1.5 whitespace-normal break-words text-sm leading-relaxed text-foreground/85">{row.body}</p> : null}
                 <p className="mt-2 text-xs text-muted-foreground"><LocalDateTime value={row.created_at} /></p>

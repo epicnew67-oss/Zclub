@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- Signed private seller avatars are short-lived URLs. */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { PhotoGallery } from "@/components/listing/photo-gallery";
-import { SlotsPicker } from "@/components/listing/slots-picker";
 import { BuyPanel } from "@/components/listing/buy-panel";
 import { getListingBySlug } from "@/lib/browse";
 
@@ -28,19 +28,16 @@ export async function generateMetadata({
     title: `${listing.title} — ${listing.seller.display_name}`,
     description:
       listing.description ??
-      `${listing.seller.display_name} offers a ${listing.duration_minutes}-min call for ${listing.price_tokens} tokens.`,
+      `${listing.seller.display_name} offers an on-demand call for ${listing.price_tokens} tokens.`,
   };
 }
 
 export default async function ListingDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ slot?: string }>;
 }) {
   const { slug } = await params;
-  await searchParams; // keep await so URL changes re-render
 
   if (!isSupabaseConfigured()) {
     return (
@@ -99,8 +96,8 @@ export default async function ListingDetailPage({
               {listing.title}
             </h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="grid size-8 place-items-center rounded-md border border-gold/30 bg-gold/10 font-heading text-xs text-gold">
-                {listing.seller.display_name.slice(0, 2).toUpperCase()}
+              <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-gold/40 bg-gold/10 font-heading text-sm text-gold">
+                {listing.seller.avatar_url ? <img src={listing.seller.avatar_url} alt="" className="size-full object-cover" /> : listing.seller.display_name.slice(0, 2).toUpperCase()}
               </span>
               <span className="font-medium text-foreground/90">
                 {listing.seller.display_name}
@@ -134,18 +131,14 @@ export default async function ListingDetailPage({
           <Card variant="glow" className="p-5">
             <CardContent className="space-y-2 px-0">
               <h2 className="font-heading text-lg text-foreground">At a glance</h2>
-              <ul className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-                <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
-                  <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Duration</p>
-                  <p className="mt-0.5 font-medium text-foreground">{listing.duration_minutes} min</p>
-                </li>
+              <ul className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
                 <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
                   <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Price</p>
                   <p className="mt-0.5 font-medium text-gold">{listing.price_tokens.toLocaleString()} tokens</p>
                 </li>
                 <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
-                  <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Open slots</p>
-                  <p className="mt-0.5 font-medium text-foreground">{listing.upcoming_slots.length}</p>
+                  <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Seller</p>
+                  <p className="mt-0.5 font-medium text-foreground">{listing.seller.presence === "available" ? "Available now" : listing.seller.presence === "in_call" ? "In a call" : listing.seller.presence === "booked" ? "Booked" : "Offline"}</p>
                 </li>
                 <li className="rounded-lg border border-border/70 bg-surface/40 p-3">
                   <p className="text-[10px] tracking-wider uppercase text-muted-foreground">Rating</p>
@@ -157,7 +150,6 @@ export default async function ListingDetailPage({
             </CardContent>
           </Card>
 
-          <SlotsPicker slots={listing.upcoming_slots} />
         </main>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">

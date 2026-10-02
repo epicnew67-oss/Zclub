@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDaysIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
   ShoppingBagIcon,
@@ -26,7 +25,6 @@ type Item = {
 const items: Item[] = [
   { label: "Dashboard", href: "/seller", icon: LayoutDashboardIcon, exact: true },
   { label: "Listings", href: "/seller/listings", icon: ListChecksIcon },
-  { label: "Availability", href: "/seller/availability", icon: CalendarDaysIcon },
   { label: "Orders", href: "/seller/orders", icon: ShoppingBagIcon },
   { label: "Wallet", href: "/wallet", icon: WalletIcon },
   { label: "Profile", href: "/seller/profile", icon: UserCircleIcon },

@@ -150,19 +150,19 @@ export default async function SellerDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Next steps</CardTitle>
-            <CardDescription>Set up your listings and availability.</CardDescription>
+            <CardDescription>Set up your listings and profile.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="text-muted-foreground">
               Create a listing, upload up to 6 photos, and submit it for admin review. Once approved,
-              add availability slots so buyers can book.
+              buyers can book while you are online and not in a call.
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               <Button asChild size="sm" className="bg-burgundy text-foreground hover:bg-burgundy/90 shadow-glow">
                 <Link href="/seller/listings/new">New listing</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link href="/seller/availability">Manage slots</Link>
+                <Link href="/seller/profile">Edit profile</Link>
               </Button>
             </div>
           </CardContent>

@@ -14,7 +14,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar";
 import { TimeZoneProvider } from "@/components/time-zone-provider";
-import { listNotifications, unreadCount, type NotificationRow } from "@/lib/notifications";
+import type { NotificationRow } from "@/lib/notifications";
+import { SellerPresence } from "@/components/seller/seller-presence";
+import { NavigationSkeleton } from "@/components/layout/navigation-skeleton";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -131,6 +133,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <TimeZoneProvider value={timeZone}>
         <TooltipProvider delayDuration={200}>
           <LoadingScreen />
+          <NavigationSkeleton />
+          {roles.includes("seller") ? <SellerPresence /> : null}
           {/* Logged-in users keep the full header (balance chip +
               notifications + avatar + dropdown). Guests get the
               premium floating pill so the public homepage reads as

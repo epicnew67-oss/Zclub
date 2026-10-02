@@ -89,11 +89,15 @@ function isTestListingTitle(title: string | null | undefined): boolean {
 }
 
 export type BrowseSeller = {
+  user_id: string;
   slug: string;
   display_name: string;
   is_verified: boolean;
   tagline: string | null;
   bio: string | null;
+  avatar_url: string | null;
+  last_seen_at: string | null;
+  presence: "available" | "booked" | "in_call" | "offline";
 };
 
 export type BrowseCategory = {
@@ -127,7 +131,6 @@ export type BrowseSlot = {
 export type BrowseListingDetail = BrowseListing & {
   description: string | null;
   photos: { id: string; url: string | null; sort_order: number }[];
-  upcoming_slots: BrowseSlot[];
 };
 
 export type BrowseSort =
@@ -302,10 +305,44 @@ type ListingJoinRow = {
   status: string;
   created_at: string;
   seller_id: string;
-  seller: Pick<BrowseSeller, "slug" | "display_name" | "is_verified" | "tagline" | "bio"> | null;
+  seller: Omit<BrowseSeller, "presence"> | null;
   category: BrowseCategory | null;
   listing_photos: { id: string; path: string; sort_order: number }[];
 };
+
+async function getPresenceMap(
+  admin: ReturnType<typeof createAdminClient>,
+  sellerIds: string[],
+): Promise<Map<string, BrowseSeller["presence"]>> {
+  const result = new Map<string, BrowseSeller["presence"]>();
+  if (!sellerIds.length) return result;
+  const [{ data: profiles }, { data: bookings }] = await Promise.all([
+    admin.from("seller_profiles").select("user_id, last_seen_at").in("user_id", sellerIds),
+    admin.from("bookings").select("seller_id, status, is_on_demand")
+      .in("seller_id", sellerIds).in("status", ["paid", "scheduled", "live"])
+      .is("soft_deleted_at", null),
+  ]);
+  const activeSince = Date.now() - 90_000;
+  for (const profile of profiles ?? []) {
+    result.set(profile.user_id, profile.last_seen_at && new Date(profile.last_seen_at).getTime() > activeSince ? "available" : "offline");
+  }
+  for (const booking of bookings ?? []) {
+    if (booking.status === "live") result.set(booking.seller_id, "in_call");
+    else if (booking.is_on_demand && result.get(booking.seller_id) !== "in_call") result.set(booking.seller_id, "booked");
+  }
+  return result;
+}
+
+async function signAvatars(
+  admin: ReturnType<typeof createAdminClient>, paths: Array<string | null>,
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  await Promise.all([...new Set(paths.filter((path): path is string => Boolean(path)))].map(async (path) => {
+    const { data } = await admin.storage.from("seller-avatars").createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+    if (data?.signedUrl) result.set(path, data.signedUrl);
+  }));
+  return result;
+}
 
 async function fetchApprovedListings(
   admin: ReturnType<typeof createAdminClient>,
@@ -321,7 +358,7 @@ async function fetchApprovedListings(
     .from("listings")
     .select(
       `id, title, description, price_tokens, duration_minutes, status, created_at, seller_id,
-       seller:seller_profiles!inner(slug, display_name, is_verified, tagline, bio),
+       seller:seller_profiles!inner(user_id, slug, display_name, is_verified, tagline, bio, avatar_url, last_seen_at),
        category:categories(id, name, slug, icon, sort_order),
        listing_photos(id, path, sort_order)`,
       { count: "exact" }
@@ -389,6 +426,9 @@ async function decorateRows(
     if (sorted[0]?.path) coverPaths.push(sorted[0].path);
   }
   const signedMap = await _signPhotoPaths(coverPaths);
+  const sellerIds = [...new Set(rows.map((r) => r.seller?.user_id).filter((id): id is string => Boolean(id)))];
+  const presenceMap = await getPresenceMap(admin, sellerIds);
+  const avatarMap = await signAvatars(admin, rows.map((r) => r.seller?.avatar_url ?? null));
 
   return rows
     // Safety net — if any row slipped past the SQL `not()` filters
@@ -402,11 +442,14 @@ async function decorateRows(
       );
       const cover = sortedPhotos[0] ? signedMap.get(sortedPhotos[0].path) ?? null : null;
       const seller = r.seller ?? {
+        user_id: "",
         slug: "",
         display_name: "—",
         is_verified: false,
         tagline: null,
         bio: null,
+        avatar_url: null,
+        last_seen_at: null,
       };
       return {
         id: r.id,
@@ -416,11 +459,15 @@ async function decorateRows(
         duration_minutes: r.duration_minutes,
         cover,
         seller: {
+          user_id: seller.user_id,
           slug: seller.slug,
           display_name: seller.display_name,
           is_verified: !!seller.is_verified,
           tagline: seller.tagline ?? null,
           bio: seller.bio ?? null,
+          avatar_url: seller.avatar_url ? avatarMap.get(seller.avatar_url) ?? null : null,
+          last_seen_at: seller.last_seen_at,
+          presence: presenceMap.get(seller.user_id) ?? "offline",
         },
         category: r.category ?? null,
         created_at: r.created_at,
@@ -482,7 +529,7 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
   // Find the seller first (cheap, unique lookup).
   const { data: sellerRow } = await admin
     .from("seller_profiles")
-    .select("id, slug, display_name, is_verified, tagline, bio, is_active, soft_deleted_at")
+    .select("id, user_id, slug, display_name, is_verified, tagline, bio, avatar_url, last_seen_at, is_active, soft_deleted_at")
     .eq("slug", parts.sellerSlug)
     .maybeSingle();
   if (!sellerRow || !sellerRow.is_active || sellerRow.soft_deleted_at) {
@@ -503,20 +550,12 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
   );
   if (!matched) return null;
 
-  const [{ data: photos }, { data: slots }, { data: category }] = await Promise.all([
+  const [{ data: photos }, { data: category }, presenceMap, avatarMap] = await Promise.all([
     admin
       .from("listing_photos")
       .select("id, path, sort_order")
       .eq("listing_id", matched.id)
       .order("sort_order"),
-    admin
-      .from("availability_slots")
-      .select("id, starts_at, ends_at, price_tokens, status")
-      .eq("listing_id", matched.id)
-      .eq("status", "open")
-      .gt("ends_at", new Date().toISOString())
-      .order("starts_at", { ascending: true })
-      .limit(60),
     matched.category_id
       ? admin
           .from("categories")
@@ -524,6 +563,8 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
           .eq("id", matched.category_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    getPresenceMap(admin, [sellerRow.user_id]),
+    signAvatars(admin, [sellerRow.avatar_url]),
   ]);
 
   const photoList = (photos ?? []).map((p) => ({
@@ -554,21 +595,19 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
     duration_minutes: matched.duration_minutes,
     cover,
     seller: {
+      user_id: sellerRow.user_id,
       slug: sellerRow.slug,
       display_name: sellerRow.display_name,
       is_verified: !!sellerRow.is_verified,
       tagline: sellerRow.tagline ?? null,
       bio: sellerRow.bio ?? null,
+      avatar_url: sellerRow.avatar_url ? avatarMap.get(sellerRow.avatar_url) ?? null : null,
+      last_seen_at: sellerRow.last_seen_at,
+      presence: presenceMap.get(sellerRow.user_id) ?? "offline",
     },
     category: (category as BrowseCategory | null) ?? null,
     created_at: matched.created_at,
     photos: sortedByOrder,
-    upcoming_slots: (slots ?? []).map((s) => ({
-      id: s.id,
-      starts_at: s.starts_at,
-      ends_at: s.ends_at,
-      price_tokens: s.price_tokens,
-    })),
   } satisfies BrowseListingDetail;
 }
 

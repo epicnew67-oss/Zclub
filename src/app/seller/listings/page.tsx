@@ -86,8 +86,7 @@ export default async function SellerListingsPage() {
           <CardHeader>
             <CardTitle className="text-gold">No listings yet</CardTitle>
             <CardDescription>
-              Your first listing needs admin approval. Once approved, you can add availability slots
-              and buyers can book you.
+              Your first listing needs admin approval. Once approved, buyers can book you when you are online.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -138,7 +137,6 @@ export default async function SellerListingsPage() {
                       </span>{" "}
                       tokens
                     </span>
-                    <span>{listing.duration_minutes} min</span>
                     {listing.category ? <span>{listing.category.name}</span> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

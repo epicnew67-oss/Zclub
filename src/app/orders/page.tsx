@@ -75,7 +75,7 @@ export default async function OrdersPage() {
               <ShoppingBagIcon className="size-5 text-gold" /> No orders yet
             </CardTitle>
             <CardDescription>
-              When you book a slot, it lands here.
+              When you book a video call, it lands here.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -104,11 +104,11 @@ export default async function OrdersPage() {
                       <span className="text-foreground/90">
                         {order.counterparty.displayName}
                       </span>{" "}
-                      · <LocalDateTime value={order.slotStart} />
+                      · {order.isOnDemand ? "On-demand call" : <LocalDateTime value={order.slotStart} />}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <OrderStatusBadge status={order.status} />
+                    <OrderStatusBadge status={order.status} isOnDemand={order.isOnDemand} />
                     <span className="font-medium text-foreground tabular-nums">
                       {order.priceTokens.toLocaleString()}
                     </span>

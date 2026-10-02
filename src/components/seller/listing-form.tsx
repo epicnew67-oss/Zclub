@@ -67,9 +67,8 @@ export function ListingForm({ categories, mode }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
-  const [durationMinutes, setDurationMinutes] = useState(
-    String(initial?.durationMinutes ?? "30")
-  );
+  // Retain the legacy schema value when editing; on-demand calls have no advertised duration.
+  const durationMinutes = initial?.durationMinutes ?? 30;
   const [priceTokens, setPriceTokens] = useState(
     String(initial?.priceTokens ?? "200")
   );
@@ -152,7 +151,7 @@ export function ListingForm({ categories, mode }: Props) {
         title,
         description,
         categoryId,
-        durationMinutes: Number(durationMinutes),
+        durationMinutes,
         priceTokens: Number(priceTokens),
         photoPaths: newPaths,
       });
@@ -175,7 +174,7 @@ export function ListingForm({ categories, mode }: Props) {
       title,
       description,
       categoryId,
-      durationMinutes: Number(durationMinutes),
+      durationMinutes,
       priceTokens: Number(priceTokens),
     });
     if (!result.ok) throw new Error(result.error);
@@ -240,7 +239,7 @@ export function ListingForm({ categories, mode }: Props) {
             {mode.kind === "create" ? "New listing" : "Edit listing"}
           </CardTitle>
           <CardDescription>
-            Title, description, category, duration, and price. Up to {MAX_PHOTOS} photos.
+            Title, description, category, and price. Up to {MAX_PHOTOS} photos.
             Status: <span className="font-medium text-foreground">{status}</span>.
             {mode.kind === "edit" && status === "rejected" && reviewNote
               ? null
@@ -285,17 +284,6 @@ export function ListingForm({ categories, mode }: Props) {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                min={5}
-                max={240}
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(e.target.value)}
-              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price (tokens)</Label>

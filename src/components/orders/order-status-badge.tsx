@@ -12,8 +12,10 @@ const STATUS_LABELS: Record<string, { label: string; variant: ComponentProps<typ
   disputed: { label: "Disputed", variant: "destructive" },
 };
 
-export function OrderStatusBadge({ status, role = "buyer" }: { status: string; role?: "buyer" | "seller" }) {
-  const meta = role === "seller" && (status === "paid" || status === "scheduled")
+export function OrderStatusBadge({ status, role = "buyer", isOnDemand = false }: { status: string; role?: "buyer" | "seller"; isOnDemand?: boolean }) {
+  const meta = isOnDemand && status === "paid"
+    ? { label: "Call booked", variant: "gold-outline" as const }
+    : role === "seller" && (status === "paid" || status === "scheduled")
     ? { label: "Slot booked", variant: "gold-outline" as const }
     : role === "seller" && status === "live"
       ? { label: "Video call running", variant: "success" as const }

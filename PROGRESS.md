@@ -1,11 +1,21 @@
 # PROGRESS.md — StripClub
 
-Marketplace where sellers list fixed-price 1:1 video call slots and buyers
+Marketplace where sellers list fixed-price on-demand 1:1 video calls and buyers
 purchase them with site tokens.
 
 Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
+
+## Phase: on-demand calls and instant settlement (2026-10-02)
+
+- New purchases use `purchase_listing_now`: an approved active service can be booked while the seller has a recent heartbeat and no active on-demand booking or running call. The RPC serializes purchases on the seller profile row, creates a synthetic slot to preserve existing booking relations, holds buyer tokens and notifies the seller in one transaction. Historical scheduled bookings remain readable and joinable.
+- Seller presence appears as available, booked, in a call, or offline. A visible seller tab refreshes presence every 25 seconds; public listing detail refreshes every 20 seconds. The slot picker, customer-facing duration controls, duration sorting, and seller availability navigation were removed for new bookings; the old availability URL redirects to listings. Legacy duration values remain internally for historical bookings.
+- New on-demand bookings have a full, immediate, idempotent refund if cancelled before anyone joins. Either participant can join immediately. Verified LiveKit joins notify the other participant by name and update the order. The mobile call chat uses a full-height panel with a scrollable message list and reachable input.
+- Completing a seller-attended call now releases escrow in the same database transaction: the seller gets 90% and the oldest active owner wallet gets 10%, with separate append-only ledger entries and an audit record. An open dispute blocks release. Participants can flag a problem while a call is live. Resolved dispute commissions also reach the owner. The admin chat-log viewer includes immediately released bookings. Commission is seeded to 10% and the release window to zero; the owner can still change commission in Settings.
+- Sellers can upload and update a larger profile picture plus their public name, tagline and bio. Listing pages show the avatar. New notification events use dismissible success/info/warning cards and the existing seller booking sound. Wallet balance resyncs on ledger events, focus and every 10 seconds. Click navigation shows skeleton feedback; listing links also show immediate skeletons.
+- Local migrations `20261211000000_on_demand_calls.sql` and `20261211000100_on_demand_slot_lifetime.sql` and both production Supabase migrations applied. On-demand synthetic slots cover the same four-hour internal safety window as LiveKit so the stale-call sweep cannot close a running call after a legacy listing's 30-minute value. Validation: booking, LiveKit, post-call money, admin, top-up, full `npm test`, build, and 25 browser tests passed, including on-demand booking/cancellation, 90/10 payout, seller photo upload, and mobile chat scrolling. Existing historical slot flows remain covered by the regression suite.
+- A funded production token payment and a real buyer/seller media session still require live verification with real payment and device accounts. The local end-to-end fixtures cover signed webhook processing and two participants joining the same LiveKit room.
 
 ## Phase: booking, moderation, loading, and timezone repairs (2026-10-02)
 

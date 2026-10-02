@@ -767,6 +767,62 @@ async function case8_cancelEdgeCases() {
   );
 }
 
+async function case9_onDemandFlow() {
+  console.log("\n== Case 9: on-demand booking, presence, refund, payout ==");
+  const seller = await makeApprovedSeller("booking-test-seller");
+  const buyer = await makeBuyer("booking-test-buyer");
+  const buyer2 = await makeBuyer("booking-test-buyer");
+  await creditWallet(buyer.userId, 500, "support", randomUUID());
+  await creditWallet(buyer2.userId, 500, "support", randomUUID());
+  const listingId = await makeApprovedListing(seller.sellerProfileId, 200, 30);
+
+  const offline = await buyer.client.rpc("purchase_listing_now", { _listing_id: listingId });
+  check("9.1 offline seller cannot be booked", offline.data?.code === "seller_offline", JSON.stringify(offline.data));
+  await seller.client.rpc("seller_heartbeat");
+  const bought = await buyer.client.rpc("purchase_listing_now", { _listing_id: listingId });
+  const bookingId = bought.data?.booking_id;
+  check("9.2 online seller can be booked immediately", bought.data?.ok === true && Boolean(bookingId), JSON.stringify(bought.data));
+  const { data: booking } = await admin.from("bookings").select("is_on_demand,status,slot_id").eq("id", bookingId).single();
+  check("9.3 on-demand order has synthetic slot and paid state", booking?.is_on_demand && booking.status === "paid" && Boolean(booking.slot_id));
+  const { data: internalSlot } = await admin.from("availability_slots").select("starts_at,ends_at").eq("id", booking.slot_id).single();
+  const internalMinutes = (Date.parse(internalSlot.ends_at) - Date.parse(internalSlot.starts_at)) / 60000;
+  check("9.3a internal slot covers the full call safety window", internalMinutes >= 239 && internalMinutes <= 241, `minutes=${internalMinutes}`);
+  const busy = await buyer2.client.rpc("purchase_listing_now", { _listing_id: listingId });
+  check("9.4 second booking blocked while seller is booked", busy.data?.code === "seller_busy", JSON.stringify(busy.data));
+  const cancel = await buyer.client.rpc("cancel_on_demand_booking", { _booking_id: bookingId });
+  check("9.5 cancellation immediately refunds in full", cancel.data?.ok === true && cancel.data?.refunded_buyer === 200, JSON.stringify(cancel.data));
+  check("9.6 balance restored", await walletBalance(buyer.userId) === 500);
+  const replay = await buyer.client.rpc("cancel_on_demand_booking", { _booking_id: bookingId });
+  check("9.7 refund is idempotent", replay.data?.code === "already_finalized");
+
+  const second = await buyer2.client.rpc("purchase_listing_now", { _listing_id: listingId });
+  const secondId = second.data?.booking_id;
+  check("9.8 seller is bookable again after cancellation", second.data?.ok === true, JSON.stringify(second.data));
+  const token = await buyer2.client.rpc("mint_livekit_token", { _booking_id: secondId });
+  check("9.9 call can be joined immediately", token.data?.ok === true && token.data?.is_on_demand === true, JSON.stringify(token.data));
+  const ownerRows = await admin.from("user_roles").select("user_id").eq("role", "owner").order("created_at").limit(1);
+  const ownerId = ownerRows.data?.[0]?.user_id;
+  const beforeOwner = await walletBalance(ownerId);
+  const beforeSeller = await walletBalance(seller.userId);
+  await admin.rpc("livekit_webhook_apply", { _booking_id: secondId, _event_type: "participant_joined", _user_id: buyer2.userId });
+  await admin.rpc("livekit_webhook_apply", { _booking_id: secondId, _event_type: "participant_joined", _user_id: seller.userId });
+  const joinedNote = await admin.from("notifications").select("title").eq("user_id", buyer2.userId).eq("link", `/orders/${secondId}`).ilike("title", "%is in the call").limit(1);
+  check("9.10 buyer notified when seller joins", joinedNote.data?.length === 1);
+  const finished = await admin.rpc("livekit_webhook_apply", { _booking_id: secondId, _event_type: "room_finished", _user_id: null });
+  const final = await admin.from("bookings").select("status").eq("id", secondId).single();
+  check("9.11 call completion releases immediately", finished.data?.ok === true && final.data?.status === "released", JSON.stringify(finished.data));
+  check("9.12 seller receives 90%", (await walletBalance(seller.userId)) - beforeSeller === 180);
+  check("9.13 owner receives 10%", (await walletBalance(ownerId)) - beforeOwner === 20);
+  await admin.rpc("livekit_webhook_apply", { _booking_id: secondId, _event_type: "room_finished", _user_id: null });
+  check("9.14 completion replay does not duplicate earnings", (await walletBalance(seller.userId)) - beforeSeller === 180);
+}
+
+async function walletBalance(userId) {
+  const { data, error } = await admin.rpc("wallet_get_balance", { _user_id: userId });
+  if (error) throw error;
+  return data;
+}
+
 // ---------------------------------------------------------------- main
 
 async function main() {
@@ -781,6 +837,7 @@ async function main() {
     await case6_noShowRefund();
     await case7_chatMessaging();
     await case8_cancelEdgeCases();
+    await case9_onDemandFlow();
   } catch (error) {
     console.error("Test runner error:", error);
     process.exit(1);

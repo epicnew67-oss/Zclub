@@ -248,7 +248,7 @@ export function DesignShowcase() {
               Body — Inter
             </div>
             <p className="mt-3 text-base">
-              Sellers list fixed-price 1:1 video call slots. Buyers purchase
+              Sellers list fixed-price 1:1 video calls. Buyers purchase
               them with site tokens — every balance is the sum of an
               append-only ledger.
             </p>

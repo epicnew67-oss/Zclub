@@ -16,13 +16,16 @@ function durationMinutes(startsIso: string, endsIso: string) {
 export function OrderStatusHeader({ order }: { order: OrderDetail }) {
   const minutes = durationMinutes(order.slot.startsAt, order.slot.endsAt);
   const cancellable = (order.status === "paid" || order.status === "scheduled") && !order.callStarted;
-  const reportable = order.status === "completed";
+  const reportable = order.status === "live" || order.status === "completed";
 
   return (
     <Card variant="glow" className="p-5">
       <CardContent className="grid gap-4 px-0 md:grid-cols-[1fr_auto]">
         <div className="space-y-3">
-          <div>
+          {order.isOnDemand ? <div className="rounded-xl border border-gold/20 bg-gold/5 p-3">
+            <p className="font-medium text-foreground">{order.status === "paid" ? "Call booked — ready to join" : order.status === "live" ? "Video call running" : order.status === "released" ? "Call complete — seller paid" : "On-demand call"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{order.role === "buyer" && order.sellerJoinedAt ? `${order.seller.displayName} is in the call. Join now.` : order.role === "seller" && order.buyerJoinedAt ? `${order.buyer.displayName} is in the call. Join now.` : "Either person can join from this order."}</p>
+          </div> : <div>
             <p className="text-[10px] tracking-wider uppercase text-muted-foreground">
               When
             </p>
@@ -32,10 +35,10 @@ export function OrderStatusHeader({ order }: { order: OrderDetail }) {
             <p className="text-xs text-muted-foreground">
               ends <LocalDateTime value={order.slot.endsAt} />
             </p>
-          </div>
+          </div>}
           <ul className="grid gap-2 text-sm md:grid-cols-3">
             <li className="flex items-center gap-2 text-foreground/90">
-              <ClockIcon className="size-4 text-gold" /> {minutes} min
+              <ClockIcon className="size-4 text-gold" /> {order.isOnDemand ? "Video call" : `${minutes} min`}
             </li>
             <li className="flex items-center gap-2 text-foreground/90">
               <CoinsIcon className="size-4 text-gold" />{" "}
@@ -56,7 +59,7 @@ export function OrderStatusHeader({ order }: { order: OrderDetail }) {
             />
           ) : null}
           {cancellable ? (
-            <CancelBookingButton bookingId={order.id} role={order.role} priceTokens={order.priceTokens} />
+            <CancelBookingButton bookingId={order.id} role={order.role} priceTokens={order.priceTokens} isOnDemand={order.isOnDemand} />
           ) : null}
         </div>
       </CardContent>

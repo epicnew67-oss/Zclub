@@ -1,9 +1,11 @@
+/* eslint-disable @next/next/no-img-element -- Signed private seller avatars are short-lived URLs. */
 import Link from "next/link";
 import { BadgeCheckIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "cn";
 import type { BrowseListing } from "@/lib/browse";
+import { ListingLinkFeedback } from "@/components/browse/listing-link-feedback";
 
 export function ListingCard({
   listing,
@@ -26,9 +28,9 @@ export function ListingCard({
         aria-label={`View ${listing.title} by ${listing.seller.display_name}`}
         className="flex h-full flex-col"
       >
+        <ListingLinkFeedback />
         <div className="relative aspect-[4/5] w-full overflow-hidden border-b border-gold/15 bg-elevated">
           {listing.cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={listing.cover}
               alt=""
@@ -55,6 +57,9 @@ export function ListingCard({
         </div>
         <div className="flex flex-1 flex-col gap-2 px-4 py-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={`size-2 shrink-0 rounded-full ${listing.seller.presence === "available" ? "bg-success" : listing.seller.presence === "in_call" ? "bg-warning" : "bg-muted-foreground/60"}`} aria-hidden="true" />
+            <span className="sr-only">{listing.seller.presence === "available" ? "Available" : listing.seller.presence === "in_call" ? "In a call" : listing.seller.presence === "booked" ? "Booked" : "Offline"}</span>
+            {listing.seller.avatar_url ? <img src={listing.seller.avatar_url} alt="" className="size-6 shrink-0 rounded-full object-cover" /> : null}
             <span className="truncate font-medium text-foreground/80">
               {listing.seller.display_name}
             </span>
@@ -77,9 +82,6 @@ export function ListingCard({
                 tokens
               </span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {listing.duration_minutes} min
-            </span>
           </div>
         </div>
       </Link>

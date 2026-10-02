@@ -45,7 +45,7 @@ export function ReportProblemButton({ bookingId, role, status }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (status !== "completed") return null;
+  if (status !== "completed" && status !== "live") return null;
 
   const trimmed = reason.trim();
   const tooShort = trimmed.length > 0 && trimmed.length < 10;
@@ -110,7 +110,7 @@ export function ReportProblemButton({ bookingId, role, status }: Props) {
         <DialogHeader>
           <DialogTitle>Report a problem</DialogTitle>
           <DialogDescription>
-            Tell us what went wrong. Opening a dispute freezes the escrow
+            Tell us what went wrong. Opening a dispute during the call freezes the escrow
             so the seller doesn&apos;t receive the payout until support reviews
             it. We&apos;ll notify the other party and follow up by email.
           </DialogDescription>

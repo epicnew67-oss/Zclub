@@ -99,29 +99,30 @@ test("clearing search cancels the pending debounce", async ({ page }) => {
   expect(new URL(page.url()).searchParams.has("q")).toBe(false);
 });
 
-test("slot selection toggles instantly, shows the actual slot price, and hydrates across timezones", async ({ page }) => {
+test("listing shows one on-demand price without scheduled slots", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
   await page.goto(`/listings/${slug}?slot=${slotId}`);
-  const selected = page.locator("[data-slots] button[aria-pressed=true]");
-  await expect(selected).toHaveCount(1);
-  await expect(page.locator("[data-buy-panel]").locator(".text-3xl")).toHaveText("350");
-  await selected.click();
-  await expect(page.locator("[data-slots] button[aria-pressed=true]")).toHaveCount(0);
-  await expect(page.locator("[data-buy-panel]").locator(".text-3xl")).toHaveText("200");
+  await expect(page.locator("[data-slots]")).toHaveCount(0);
+  await expect(page.locator("[data-buy-panel]")).toContainText("200");
+  await expect(page.locator("[data-buy-panel]")).toContainText("Offline");
   expect(errors).toEqual([]);
 });
 
-test("buyer can sign in, reserve a slot and see the order in their timezone", async ({ page }) => {
+test("buyer can sign in, book an online seller and join without picking a time", async ({ page }) => {
+  await result(admin.from("seller_profiles").update({ last_seen_at: new Date().toISOString() }).eq("user_id", seller.user.id).select("id").single());
   await page.goto(`/auth/sign-in?next=${encodeURIComponent(`/listings/${slug}?slot=${slotId}`)}`);
   await page.getByLabel("Email", { exact: true }).fill(buyer.user.email!);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Reserve this slot" })).toBeVisible();
-  await page.getByRole("button", { name: "Reserve this slot" }).click();
+  await expect(page.getByRole("button", { name: "Book and join now" })).toBeVisible();
+  await page.getByRole("button", { name: "Book and join now" }).click();
   await expect(page).toHaveURL(/\/orders\/[\w-]+$/);
   await expect(page.getByRole("heading", { name: "Regression Call", exact: true })).toBeVisible();
-  const expected = await page.evaluate(iso => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Los_Angeles", timeZoneName: "short" }).replace(/\b(am|pm)\b/i, m => m.toUpperCase()), slotStart);
-  await expect(page.locator("header time").first()).toHaveText(expected);
+  await expect(page.getByText("Call booked", { exact: false }).first()).toBeVisible();
+  await expect(page.locator('[data-join-call="ready"]')).toBeVisible();
+  await page.getByRole("button", { name: "Cancel booking" }).click();
+  await page.getByRole("button", { name: "Yes, cancel" }).click();
+  await expect(page.getByText("Cancelled", { exact: true })).toBeVisible();
 });
 
 test("buyer can open the orders list and return to an order", async ({ page, context }) => {
@@ -155,8 +156,7 @@ test("buyer and seller see the same booking in their own time zones", async ({ b
     await expect(sellerPage.locator(`a[href="/orders/${callBookingId}"] time`)).toHaveText(expectedLA);
     expect(expectedIndia).not.toBe(expectedLA);
     await sellerPage.goto("/seller/availability");
-    await expect(sellerPage.getByText("Pick a listing, add slots in America/Los_Angeles")).toBeVisible();
-    await expect(sellerPage.getByText("Showing slots for the selected listing in America/Los_Angeles")).toBeVisible();
+    await expect(sellerPage).toHaveURL(/\/seller\/listings$/);
     expect(errors).toEqual([]);
   } finally {
     await buyerContext.close();
@@ -174,7 +174,7 @@ test("joining an active call opens exactly one tab", async ({ page, context }) =
   expect(pages).toHaveLength(1);
 });
 
-test("phone call chat opens as a bottom panel without replacing video or controls", async ({ page, context }) => {
+test("phone call chat opens as a full-height scrollable panel with controls visible", async ({ page, context }) => {
   await authenticate(context, buyer);
   await context.grantPermissions(["camera", "microphone"]);
   await page.goto(`/call/${callBookingId}`);
@@ -192,8 +192,22 @@ test("phone call chat opens as a bottom panel without replacing video or control
   await expect(page.getByTestId("call-video-stage")).toBeVisible();
   const box = await panel.boundingBox();
   expect(box).not.toBeNull();
-  expect(box!.y).toBeGreaterThan(200);
+  expect(box!.y).toBeLessThan(100);
   expect(box!.y + box!.height).toBeLessThan(844);
+  await expect(panel.locator(".lk-chat-messages")).toHaveCSS("overflow-y", "auto");
+  await expect(panel.locator(".lk-chat-form")).toBeVisible();
+  const scrollMetrics = await panel.locator(".lk-chat-messages").evaluate((element) => {
+    const sample = document.createElement("div");
+    sample.style.height = "1800px";
+    sample.style.minHeight = "1800px";
+    sample.style.flexShrink = "0";
+    element.append(sample);
+    element.scrollTop = element.scrollHeight;
+    const metrics = { scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollTop: element.scrollTop, height: getComputedStyle(element).height, parentHeight: getComputedStyle(element.parentElement!).height };
+    sample.remove();
+    return metrics;
+  });
+  expect(scrollMetrics.scrollHeight > scrollMetrics.clientHeight && scrollMetrics.scrollTop > 0, JSON.stringify(scrollMetrics)).toBe(true);
   await page.getByRole("button", { name: "Close call chat", exact: true }).last().click();
   await expect(panel).toHaveCount(0);
 });
@@ -220,7 +234,7 @@ test("buyer and seller connect to the same call and completion is recorded", asy
     await expect.poll(async () => {
       const { data } = await admin.from("bookings").select("status").eq("id", callBookingId).single();
       return data?.status;
-    }, { timeout: 20_000 }).toBe("completed");
+    }, { timeout: 20_000 }).toBe("released");
   } finally {
     await sellerContext.close();
   }
@@ -292,26 +306,24 @@ test("seller can cancel an unstarted call after the slot begins and buyer is ful
   expect(refunds?.reduce((sum, row) => sum + row.amount, 0)).toBe(200);
 });
 
-test("seller sees a booked slot become a running call", async ({ page, context }) => {
+test("seller sees a booked order become a running call", async ({ page, context }) => {
   const start = Date.now() + 72 * 60 * 60_000;
   const slot = await result(admin.from("availability_slots").insert({ listing_id: listingId, starts_at: new Date(start).toISOString(), ends_at: new Date(start + 30 * 60_000).toISOString(), price_tokens: 200, status: "open" }).select("id").single());
   const client = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${buyer.access_token}` } } });
   const booking = await result(client.rpc("purchase_slot", { _slot_id: slot.id }));
   await authenticate(context, seller);
-  await page.goto("/seller/availability");
+  await page.goto("/seller/orders");
   await page.getByRole("button", { name: /Notifications/ }).click();
   const notices = page.getByRole("dialog", { name: "Notifications" });
   await expect(notices.getByText("New video call booked").first()).toBeVisible();
-  await expect(notices.getByText(/booked Regression Call for 200 tokens/).first()).toBeVisible();
   await expect(notices.getByRole("button", { name: "Booking sound on" })).toBeVisible();
   await notices.getByRole("button", { name: "Close notifications" }).click();
-  const bookedRow = page.locator("li").filter({ has: page.locator(`a[href="/orders/${booking.booking_id}"]`) });
-  await expect(bookedRow.getByRole("link", { name: "View booking" })).toBeVisible();
-  await expect(bookedRow.locator('[data-slot="badge"]')).toHaveText("Slot booked");
+  const bookedRow = page.locator(`a[href="/orders/${booking.booking_id}"]`);
+  await expect(bookedRow.getByText("Slot booked")).toBeVisible();
   await expect(page.getByTestId("seller-booking-realtime")).toHaveAttribute("data-connected", "true");
   const { error } = await admin.from("bookings").update({ status: "live" }).eq("id", booking.booking_id);
   if (error) throw error;
-  await expect(bookedRow.locator('[data-slot="badge"]')).toHaveText("Video call running");
+  await expect(bookedRow.getByText("Video call running")).toBeVisible();
   await page.goto("/seller/orders");
   await expect(page.locator(`a[href="/orders/${booking.booking_id}"]`).getByText("Video call running")).toBeVisible();
 });
@@ -343,17 +355,30 @@ test("seller can activate and pause an approved listing", async ({ page, context
   await expect(listing.getByRole("button", { name: "Activate listing" })).toBeVisible();
 });
 
-test("seller availability uses the saved region rather than the device region", async ({ page, context }) => {
+test("seller orders use the saved region rather than the device region", async ({ page, context }) => {
   await authenticate(context, seller);
   await page.goto("/account");
   await page.getByLabel("Your time zone").selectOption("Asia/Karachi");
   await page.getByRole("button", { name: "Save time zone" }).click();
   await expect(page.getByText("Time zone saved.")).toBeVisible();
-  await page.goto("/seller/availability");
-  await expect(page.getByText("Pick a listing, add slots in Asia/Karachi")).toBeVisible();
-  await expect(page.getByText("Showing slots for the selected listing in Asia/Karachi")).toBeVisible();
+  await page.goto("/seller/orders");
   const expected = await page.evaluate(iso => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Karachi" }).replace(/\b(am|pm)\b/i, m => m.toUpperCase()), callStartIso);
-  await expect(page.locator("li").filter({ has: page.locator(`a[href="/orders/${callBookingId}"]`) })).toContainText(expected);
+  await expect(page.locator(`a[href="/orders/${callBookingId}"]`)).toContainText(expected);
+});
+
+test("seller can upload a larger public profile photo", async ({ page, context }) => {
+  await authenticate(context, seller);
+  await page.goto("/seller/profile");
+  await expect(page.getByRole("heading", { name: "Seller profile" })).toBeVisible();
+  await page.locator('#seller-photo').setInputFiles({
+    name: "avatar.png", mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/R7sAAAAASUVORK5CYII=", "base64"),
+  });
+  await expect(page.getByAltText("Seller profile preview")).toBeVisible();
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Seller profile updated.")).toBeVisible();
+  const { data } = await admin.from("seller_profiles").select("avatar_url").eq("user_id", seller.user.id).single();
+  expect(data?.avatar_url).toMatch(new RegExp(`^${seller.user.id}/avatar-\\d+\\.png$`));
 });
 
 test("seller can delete a listing without losing booked orders", async ({ page, context }) => {
@@ -398,8 +423,8 @@ test("saved region overrides device time zone on orders", async ({ page, context
   await page.getByRole("button", { name: "Save time zone" }).click();
   await expect(page.getByText("Time zone saved.")).toBeVisible();
   await page.goto("/orders");
-  const expected = await page.evaluate(iso => new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Karachi", timeZoneName: "short" }).replace(/\b(am|pm)\b/i, m => m.toUpperCase()), callStartIso);
-  await expect(page.locator(`a[href="/orders/${callBookingId}"] time`)).toHaveText(expected);
+  const expected = await page.evaluate(iso => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Karachi" }).replace(/\b(am|pm)\b/i, m => m.toUpperCase()), callStartIso);
+  await expect(page.locator(`a[href="/orders/${callBookingId}"] time`)).toContainText(expected);
 });
 
 test.afterAll(async () => {
