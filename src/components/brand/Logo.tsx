@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { cn } from "cn";
 import { brand } from "@/lib/brand";
 
@@ -10,44 +9,35 @@ type LogoProps = {
 };
 
 const sizes = {
-  sm: { mark: 29, word: 14 },
-  md: { mark: 37, word: 17 },
-  lg: { mark: 55, word: 23 },
-  xl: { mark: 94, word: 34 },
-  "2xl": { mark: 160, word: 56 },
+  sm: { mark: "size-8 text-[27px]", word: "text-[15px]" },
+  md: { mark: "size-10 text-[34px]", word: "text-[19px]" },
+  lg: { mark: "size-14 text-[48px]", word: "text-[25px]" },
+  xl: { mark: "size-24 text-[80px]", word: "text-[39px]" },
+  "2xl": { mark: "size-36 text-[116px]", word: "text-[58px]" },
 } as const;
 
-/** The crest is isolated from the owner's supplied logo art. */
+/** A simple letterform replaces the overlapping crest in the old artwork. */
 export function Logo({ variant = "full", invert = false, size = "md", className }: LogoProps) {
-  const { mark, word } = sizes[size];
-
+  const scale = sizes[size];
   return (
     <span
       aria-label={brand.name}
       data-logo={variant}
-      data-invert={invert ? "true" : undefined}
       className={cn("inline-flex select-none items-center", variant === "full" && "gap-2.5", className)}
     >
       {variant !== "wordmark" ? (
-        <Image
+        <span
           data-logo-mark
-          src={brand.logo.mark}
-          alt=""
-          loading="eager"
-          width={410}
-          height={495}
-          className={cn("shrink-0 object-contain", invert && "brightness-0")}
-          style={{ width: mark, height: Math.round(mark * 495 / 410) }}
-        />
+          aria-hidden="true"
+          className={cn("relative grid shrink-0 place-items-center overflow-hidden border font-heading italic leading-none", invert ? "border-background/40 bg-background text-foreground" : "border-gold/50 bg-burgundy text-foreground", scale.mark)}
+        >
+          <span className="-translate-y-[.04em]">S</span>
+          <span className={cn("absolute right-0 bottom-0 h-[3px] w-1/2", invert ? "bg-foreground" : "bg-gold-soft")} />
+        </span>
       ) : null}
       {variant !== "mark" ? (
-        <span
-          data-logo-word
-          aria-hidden="true"
-          className={cn("font-heading font-medium leading-none tracking-[.14em] whitespace-nowrap", invert ? "text-background" : "text-gold-soft")}
-          style={{ fontSize: word }}
-        >
-          {brand.name.toUpperCase()}
+        <span data-logo-word aria-hidden="true" className={cn("font-heading leading-none font-semibold tracking-[-.035em] whitespace-nowrap", scale.word)}>
+          <span className={invert ? "text-background" : "text-foreground"}>STRIP</span><span className={invert ? "text-background/65" : "text-gold-soft"}>CLUB</span>
         </span>
       ) : null}
     </span>

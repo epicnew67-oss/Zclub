@@ -12,8 +12,8 @@
  * `src/app/notifications/actions.ts`.
  */
 
-const CACHE = "stripclub-shell-v2";
-const SHELL = ["/manifest.webmanifest", "/brand/crest-icon-192.png"];
+const CACHE = "stripclub-shell-v3";
+const SHELL = ["/manifest.webmanifest", "/brand/monogram-icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => null));
@@ -39,7 +39,7 @@ self.addEventListener("fetch", (event) => {
       fetch(req).catch(
         () =>
           new Response(
-            "<!doctype html><meta charset=utf-8><title>Offline</title><body style='background:#0D0A09;color:#F6F0E8;font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center;padding:24px'><div><h1 style='color:#C2A17B;font-family:Playfair Display,serif;margin:0 0 8px'>You're offline</h1><p style='color:#B9A99C;margin:0'>Reconnect to see new updates.</p></div></body>",
+            "<!doctype html><meta charset=utf-8><title>Offline</title><body style='background:#0C0A0D;color:#F6F0E8;font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;text-align:center;padding:24px'><div><h1 style='color:#C2A17B;font-family:Playfair Display,serif;margin:0 0 8px'>You're offline</h1><p style='color:#B9A99C;margin:0'>Reconnect to see new updates.</p></div></body>",
             { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }
           )
       )
@@ -57,8 +57,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: "/brand/crest-icon-192.png",
-      badge: "/brand/crest-icon-192.png",
+      icon: "/brand/monogram-icon-192.png",
+      badge: "/brand/monogram-icon-192.png",
       tag: payload.tag,
       data: { link: payload.link },
       requireInteraction: false,

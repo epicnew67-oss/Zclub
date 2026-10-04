@@ -351,6 +351,7 @@ async function fetchApprovedListings(
   filters: {
     search?: string;
     categoryId?: string;
+    sellerId?: string;
     sort: BrowseSort;
     limit: number;
     offset: number;
@@ -385,10 +386,15 @@ async function fetchApprovedListings(
   if (filters.categoryId) {
     query = query.eq("category_id", filters.categoryId);
   }
+  if (filters.sellerId) query = query.eq("seller_id", filters.sellerId);
   if (filters.search && filters.search.trim()) {
-    // ilike on title; case-insensitive substring match.
     const term = `%${filters.search.trim()}%`;
-    query = query.ilike("title", term);
+    const { data: matchingSellers } = await admin.from("seller_profiles").select("id").ilike("display_name", term).eq("is_active", true).is("soft_deleted_at", null).limit(100);
+    const ids = (matchingSellers ?? []).map(row => row.id);
+    if (ids.length) {
+      const quotedTerm = `"${term.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+      query = query.or(`title.ilike.${quotedTerm},seller_id.in.(${ids.join(",")})`);
+    } else query = query.ilike("title", term);
   }
 
   switch (filters.sort) {
@@ -431,6 +437,8 @@ async function decorateRows(
   const sellerIds = [...new Set(rows.map((r) => r.seller?.user_id).filter((id): id is string => Boolean(id)))];
   const presenceMap = await getPresenceMap(admin, sellerIds);
   const avatarMap = await signAvatars(admin, rows.map((r) => r.seller?.avatar_url ?? null));
+  const { data: accounts } = await admin.from("profiles").select("id, is_banned, soft_deleted_at").in("id", sellerIds);
+  const visibleAccounts = new Set((accounts ?? []).filter(account => !account.is_banned && !account.soft_deleted_at).map(account => account.id));
 
   return rows
     // Safety net — if any row slipped past the SQL `not()` filters
@@ -438,6 +446,7 @@ async function decorateRows(
     // here so the public UI never shows test names or titles.
     .filter((r) => !isTestSellerDisplayName(r.seller?.display_name))
     .filter((r) => !isTestListingTitle(r.title))
+    .filter((r) => r.seller && visibleAccounts.has(r.seller.user_id))
     .map((r) => {
       const sortedPhotos = [...(r.listing_photos ?? [])].sort(
         (a, b) => a.sort_order - b.sort_order
@@ -537,6 +546,8 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
   if (!sellerRow || !sellerRow.is_active || sellerRow.soft_deleted_at) {
     return null;
   }
+  const { data: sellerAccount } = await admin.from("profiles").select("is_banned, soft_deleted_at").eq("id", sellerRow.user_id).maybeSingle();
+  if (!sellerAccount || sellerAccount.is_banned || sellerAccount.soft_deleted_at) return null;
 
   // Find an approved listing by this seller whose title-slug matches.
   const { data: candidates } = await admin
@@ -616,3 +627,13 @@ async function getListingBySlugUncached(slug: string): Promise<BrowseListingDeta
 export { signOne as signSinglePhotoPath };
 
 export const getListingBySlug = cache(getListingBySlugUncached);
+
+export const getPublicSellerProfile = cache(async (slug: string): Promise<{ seller: BrowseSeller; listings: BrowseListing[] } | null> => {
+  const admin = createAdminClient();
+  const { data: profile } = await admin.from("seller_profiles").select("id, display_name").eq("slug", slug).eq("is_active", true).is("soft_deleted_at", null).maybeSingle();
+  if (!profile || isTestSellerDisplayName(profile.display_name)) return null;
+  const { rows } = await fetchApprovedListings(admin, { sellerId: profile.id, sort: "newest", limit: 60, offset: 0 });
+  const listings = await decorateRows(admin, rows);
+  if (!listings.length) return null;
+  return { seller: listings[0].seller, listings };
+});

@@ -102,6 +102,16 @@ test("sign-up stores the selected region and profile photo", async ({ page }) =>
   }).toMatch(new RegExp(`^${profile.id}/avatar-.*\\.png$`));
 });
 
+test("seller names lead to public profiles and searchable calls", async ({ page }) => {
+  await page.goto(`/sellers/regression-${stamp}`);
+  await expect(page.getByRole("heading", { name: "Regression Seller", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View Regression Call by Regression Seller", exact: true })).toBeVisible();
+  await page.goto("/browse?q=Regression%20Seller");
+  await expect(page.locator(`a[href="/listings/${slug}"]`)).toBeVisible();
+  await page.goto("/browse?q=%22%2C%28%29");
+  await expect(page.getByRole("heading", { name: /Something went wrong/ })).toHaveCount(0);
+});
+
 test("clearing search cancels the pending debounce", async ({ page }) => {
   await page.goto("/browse");
   await page.getByRole("searchbox", { name: "Search listings" }).fill("Regression");
@@ -560,4 +570,28 @@ test("saved region overrides device time zone on orders", async ({ page, context
 test.afterAll(async () => {
   // Preserve users, orders and ledger history; hide this test listing.
   if (listingId) await admin.from("listings").update({ is_active: false }).eq("id", listingId);
+});
+
+
+test("owner can add tokens with a reason and admin errors stay visible", async ({ page, context }) => {
+  await admin.from("user_roles").insert({ user_id: moderator.user.id, role: "owner" }).throwOnError();
+  try {
+    await authenticate(context, moderator);
+    await page.goto("/admin/customers?q=Regression%20Buyer");
+    const row = page.locator(`[data-member-id="${buyer.user.id}"]`);
+    const before = await result(admin.rpc("wallet_get_balance", { _user_id: buyer.user.id }));
+    await row.getByRole("button", { name: "Add tokens" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Tokens to add").fill("17");
+    await dialog.getByLabel("Reason", { exact: true }).fill("Local regression credit verification");
+    await dialog.getByRole("button", { name: "Add tokens", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await result(admin.rpc("wallet_get_balance", { _user_id: buyer.user.id }))).toBe(Number(before) + 17);
+    await page.goto("/admin/customers?q=Regression%20support");
+    await page.locator(`[data-member-id="${moderator.user.id}"]`).getByRole("button", { name: "Ban member" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Ban member", exact: true }).click();
+    await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("You cannot ban your own account.");
+  } finally {
+    await admin.from("user_roles").delete().eq("user_id", moderator.user.id).eq("role", "owner");
+  }
 });

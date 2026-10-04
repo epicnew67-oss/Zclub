@@ -12,7 +12,7 @@ export function HomeFaq() {
   return (
     <RevealSection target="[data-reveal]" className="border-t border-gold/20 bg-surface/50">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:grid-cols-[.7fr_1fr] md:px-8 md:py-24">
-        <div data-reveal><p className="editorial-kicker">05 / Good to know</p><h2 className="mt-3 font-heading text-4xl leading-none md:text-6xl">A little more <em className="text-gold-soft">clarity.</em></h2></div>
+        <div data-reveal><p className="editorial-kicker">Good to know</p><h2 className="mt-3 font-heading text-4xl leading-none md:text-6xl">A little more <em className="text-gold-soft">clarity.</em></h2></div>
         <div className="border-t border-gold/25">
           {faqs.map((faq) => (
             <details key={faq.q} data-reveal className="group border-b border-gold/25 py-5 [&_summary::-webkit-details-marker]:hidden">

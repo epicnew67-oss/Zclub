@@ -153,7 +153,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               bottom navigation (Browse / Orders / Wallet / You). */}
           {user ? (
             <>
-              <div aria-hidden="true" className="h-14 md:hidden" />
+              <div aria-hidden="true" className="h-14 xl:hidden" />
               <MobileNav />
             </>
           ) : null}

@@ -98,9 +98,9 @@ async function caseA_pwaAssets() {
   // File existence on disk.
   const swPath = `${repo}/public/sw.js`;
   const manifestPath = `${repo}/public/manifest.webmanifest`;
-  const iconPath = `${repo}/public/brand/crest-icon-192.png`;
-  const maskablePath = `${repo}/public/brand/crest-maskable-512.png`;
-  const faviconPath = `${repo}/public/brand/crest-favicon.png`;
+  const iconPath = `${repo}/public/brand/monogram-icon-192.png`;
+  const maskablePath = `${repo}/public/brand/monogram-maskable-512.png`;
+  const faviconPath = `${repo}/public/brand/monogram-favicon.png`;
   check("A.1 sw.js on disk", existsSync(swPath));
   check("A.2 manifest.webmanifest on disk", existsSync(manifestPath));
   check("A.3 app icon on disk", existsSync(iconPath));
@@ -111,8 +111,8 @@ async function caseA_pwaAssets() {
   if (existsSync(manifestPath)) {
     const m = JSON.parse(readFileSync(manifestPath, "utf8"));
     check("A.6 manifest name = StripClub", m.name === "StripClub", JSON.stringify(m.name));
-    check("A.7 manifest splash matches brand", m.background_color === "#0D0A09", JSON.stringify(m.background_color));
-    check("A.8 manifest theme matches brand", m.theme_color === "#0D0A09", JSON.stringify(m.theme_color));
+    check("A.7 manifest splash matches brand", m.background_color === "#0C0A0D", JSON.stringify(m.background_color));
+    check("A.8 manifest theme matches brand", m.theme_color === "#0C0A0D", JSON.stringify(m.theme_color));
     check("A.9 manifest start_url = /", m.start_url === "/", JSON.stringify(m.start_url));
     check("A.10 manifest has icons array", Array.isArray(m.icons) && m.icons.length > 0, JSON.stringify(m.icons?.length));
     check("A.11 at least one maskable icon", (m.icons ?? []).some((i) => i.purpose === "maskable"));
@@ -127,7 +127,7 @@ async function caseA_pwaAssets() {
     const src = readFileSync(swPath, "utf8");
     check("A.13 sw.js has 'push' handler", src.includes("addEventListener(\"push\""));
     check("A.14 sw.js has 'notificationclick' handler", src.includes("addEventListener(\"notificationclick\""));
-    check("A.15 sw.js references current crest", src.includes("/brand/crest-icon-192.png"));
+    check("A.15 sw.js references current monogram", src.includes("/brand/monogram-icon-192.png"));
   }
 }
 

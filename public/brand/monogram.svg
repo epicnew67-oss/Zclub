@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="StripClub S monogram">
+  <rect width="512" height="512" fill="#A61E38"/>
+  <rect x="14" y="14" width="484" height="484" fill="none" stroke="#E76C78" stroke-width="9"/>
+  <text x="251" y="376" text-anchor="middle" font-family="Georgia,Times New Roman,serif" font-style="italic" font-size="376" fill="#F8F2EE">S</text>
+  <path d="M288 492h195" stroke="#F2A6AB" stroke-width="18"/>
+</svg>

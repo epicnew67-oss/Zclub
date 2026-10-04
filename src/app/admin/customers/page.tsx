@@ -9,9 +9,10 @@ export default async function AdminCustomersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  await requireUser("/admin/customers");
+  const { supabase } = await requireUser("/admin/customers");
+  const [{ data: owner }, { data: support }] = await Promise.all([supabase.rpc("user_has_role", { _role: "owner" }), supabase.rpc("user_has_role", { _role: "support" })]);
   const { q = "" } = await searchParams;
-  const rows = await searchUsers(q, 50, 0).catch(() => []);
+  const rows = await searchUsers(q, 50, 0);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 md:px-6 md:py-10">
@@ -20,9 +21,7 @@ export default async function AdminCustomersPage({
           <span className="text-gold">Customers</span>
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Search users, view their profile and wallet, ban / unban, soft-delete when there is no
-          escrow or payout in flight. Wallet balance edits require an owner and a written reason
-          (every adjustment is audit-logged).
+          Find a member, add tokens, or manage their account. Every change is recorded in the audit log.
         </p>
       </header>
 
@@ -41,7 +40,7 @@ export default async function AdminCustomersPage({
         </button>
       </form>
 
-      <AdminCustomersTable rows={rows} />
+      <AdminCustomersTable rows={rows} canAdjust={!!owner} canManage={!!owner || !!support} />
     </div>
   );
 }

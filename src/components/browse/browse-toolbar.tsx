@@ -1,6 +1,6 @@
 import { SearchInput } from "@/components/browse/search-input";
 import { FilterSelect } from "@/components/browse/filter-select";
-import type { BrowseCategory, BrowseSort } from "@/lib/browse";
+import type { BrowseSort } from "@/lib/browse";
 
 const SORT_OPTIONS: { value: BrowseSort | ""; label: string }[] = [
   { value: "", label: "Newest" },
@@ -10,35 +10,20 @@ const SORT_OPTIONS: { value: BrowseSort | ""; label: string }[] = [
 
 export function BrowseToolbar({
   initialSearch,
-  initialCategorySlug,
   initialSort,
-  categories,
   resultCount,
 }: {
   initialSearch: string;
-  initialCategorySlug: string;
   initialSort: BrowseSort;
-  categories: BrowseCategory[];
   resultCount: number | null;
 }) {
-  const categoryOptions = [
-    { value: "", label: "All categories" },
-    ...categories.map((c) => ({ value: c.slug, label: c.name })),
-  ];
-
   return (
     <div
       data-toolbar
-      className="flex flex-col gap-3 border-y border-gold/25 bg-surface/50 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+      className="flex flex-col gap-3 py-1 sm:flex-row sm:items-center sm:justify-between"
     >
       <SearchInput initial={initialSearch} className="flex-1 sm:max-w-sm" />
       <div className="flex flex-wrap items-center gap-2">
-        <FilterSelect
-          param="category"
-          initial={initialCategorySlug}
-          options={categoryOptions}
-          ariaLabel="Filter by category"
-        />
         <FilterSelect
           param="sort"
           initial={initialSort}

@@ -80,9 +80,9 @@ export default async function ListingDetailPage({
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="flex min-w-0 flex-col gap-8">
+        <div className="flex min-w-0 flex-col gap-8">
           <header className="space-y-5 border-b border-gold/25 pb-7">
-            <p className="editorial-kicker">Private call / The collection</p>
+            <p className="editorial-kicker">One to one / Your next connection</p>
             <div className="flex flex-wrap items-center gap-2">
               {listing.category ? (
                 <Badge variant="outline" className="border-gold/40">
@@ -96,11 +96,11 @@ export default async function ListingDetailPage({
             <h1 className="max-w-3xl font-heading text-5xl leading-[.95] font-normal tracking-tight md:text-7xl">
               {listing.title}
             </h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-gold/40 bg-gold/10 font-heading text-sm text-gold">
+            <Link href={`/sellers/${listing.seller.slug}`} className="group flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-gold/40 bg-gold/10 font-heading text-sm text-gold">
                 {listing.seller.avatar_url ? <img src={listing.seller.avatar_url} alt="" className="size-full object-cover" /> : listing.seller.display_name.slice(0, 2).toUpperCase()}
               </span>
-              <span className="font-medium text-foreground/90">
+              <span className="font-heading text-2xl text-foreground group-hover:text-gold-soft">
                 {listing.seller.display_name}
               </span>
               {listing.seller.is_verified ? (
@@ -109,10 +109,10 @@ export default async function ListingDetailPage({
               {listing.seller.tagline ? (
                 <span className="hidden sm:inline">· {listing.seller.tagline}</span>
               ) : null}
-            </div>
+            </Link>
           </header>
 
-          <PhotoGallery photos={listing.photos} />
+          <PhotoGallery photos={listing.photos.some(photo => photo.url) ? listing.photos.filter(photo => photo.url) : listing.seller.avatar_url ? [{ id: "avatar", url: listing.seller.avatar_url, sort_order: 0 }] : []} />
 
           <Separator className="bg-gold/15" />
 
@@ -146,7 +146,7 @@ export default async function ListingDetailPage({
             </CardContent>
           </Card>
 
-        </main>
+        </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <Suspense fallback={null}>

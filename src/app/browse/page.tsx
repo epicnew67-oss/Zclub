@@ -2,18 +2,17 @@ import type { Metadata } from "next";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRightIcon } from "lucide-react";
 import { ListingCard } from "@/components/browse/listing-card";
 import { BrowseToolbar } from "@/components/browse/browse-toolbar";
 import { BrowseSkeletonGrid } from "@/components/browse/browse-skeleton";
 import { PresenceRefresh } from "@/components/browse/presence-refresh";
-import { getCategories, listBrowseListings, type BrowseSort } from "@/lib/browse";
+import { listBrowseListings, type BrowseSort } from "@/lib/browse";
 
 export const metadata: Metadata = {
   title: "Browse",
   description:
-    "Discover sellers offering on-demand 1:1 video calls. Filter by category and sort by price.",
+    "Discover sellers offering on-demand 1:1 video calls. View profiles, see who is online, and choose your call.",
 };
 
 const VALID_SORTS: BrowseSort[] = [
@@ -54,34 +53,24 @@ export default async function BrowsePage({
     );
   }
 
-  const [categories, { rows, total }] = await Promise.all([
-    getCategories(),
-    listBrowseListings({
+  const { rows, total } = await listBrowseListings({
       search: initialSearch || undefined,
       categorySlug: initialCategory || undefined,
       sort: initialSort,
       limit: 24,
-    }),
-  ]);
+    });
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-10 md:px-8 md:py-16">
       <PresenceRefresh />
-      <header className="relative flex min-h-64 items-end overflow-hidden border border-gold/25 bg-elevated px-6 py-8 md:min-h-72 md:px-10 md:py-10">
-        <Image src="/editorial/editorial-shadow.webp" alt="" fill priority sizes="(max-width: 768px) 100vw, 1200px" className="object-cover object-[50%_40%] opacity-45" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
-        <div className="relative z-10 max-w-2xl">
-          <p className="editorial-kicker">The collection / All calls</p>
-          <h1 className="mt-4 font-heading text-5xl leading-none font-normal tracking-tight md:text-7xl">Find your <em className="text-gold-soft">moment.</em></h1>
-          <p className="mt-5 max-w-lg text-sm leading-6 text-foreground/75">Browse real listings, see who is online, and book a private call with tokens.</p>
-        </div>
+      <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-9">
+        <div><p className="editorial-kicker">A face. A spark. A conversation.</p><h1 className="mt-5 font-heading text-5xl leading-none tracking-tight md:text-7xl">Someone worth<br /><em className="text-gold-soft">staying for.</em></h1></div>
+        <p className="max-w-xs text-sm leading-7 text-muted-foreground">Find a seller who catches your eye. Open their profile and make your next connection a private one.</p>
       </header>
 
       <BrowseToolbar
         initialSearch={initialSearch}
-        initialCategorySlug={initialCategory}
         initialSort={initialSort}
-        categories={categories}
         resultCount={total}
       />
 
@@ -102,7 +91,7 @@ export default async function BrowsePage({
         ) : (
           <div
             data-browse-grid
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            className="grid grid-cols-2 gap-x-3 gap-y-9 md:gap-x-5 lg:grid-cols-3 xl:grid-cols-4"
           >
             {rows.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />

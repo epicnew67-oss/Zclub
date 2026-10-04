@@ -7,8 +7,7 @@
  * maps those variables to utilities in src/app/globals.css (@theme inline).
  *
  * Nothing brand-related is hardcoded in pages — change a value here and the
- * whole site updates. The crest is extracted from the supplied logo art
- * and served as optimized PNG assets in /public/brand/.
+ * whole site updates. The simple monogram is served in SVG and PNG formats in /public/brand/.
  */
 
 export const brand = {
@@ -20,26 +19,26 @@ export const brand = {
     "StripClub is a marketplace for on-demand 1:1 video calls. Buy tokens, choose an available seller, and join your call.",
   colors: {
     // Surfaces
-    bg: "#0D0A09",
-    surface: "#191411",
-    elevated: "#251D18",
-    overlay: "#2C211B",
-    onGold: "#19110C",
+    bg: "#0C0A0D",
+    surface: "#19151B",
+    elevated: "#251D26",
+    overlay: "#302531",
+    onGold: "#211216",
     // Text
-    text: "#F6F0E8",
-    textMuted: "#B9A99C",
+    text: "#F8F2EE",
+    textMuted: "#C2ADB5",
     // Lines
-    line: "#48382E",
-    lineStrong: "#695141",
+    line: "#493740",
+    lineStrong: "#71515F",
     // Accents — gold is the accent, burgundy is for primary actions.
     // Sampled from the production StripClub logo artwork.
-    gold: "#C2A17B",
-    goldSoft: "#E5CBA9",
-    goldDeep: "#9E7854",
-    burgundy: "#660E12",
-    burgundyDeep: "#420A0C",
+    gold: "#E76C78",
+    goldSoft: "#F2A6AB",
+    goldDeep: "#B92E45",
+    burgundy: "#A61E38",
+    burgundyDeep: "#5A1427",
     // Status
-    success: "#5BA56B",
+    success: "#74C297",
     danger: "#E5484D",
   },
   fonts: {
@@ -48,18 +47,18 @@ export const brand = {
   },
   /** Logo asset paths — the only place file paths live. */
   logo: {
-    favicon: "/brand/crest-favicon.png",
-    appleTouchIcon: "/brand/crest-apple-touch.png",
-    icon192: "/brand/crest-icon-192.png",
-    icon512: "/brand/crest-icon-512.png",
-    maskable: "/brand/crest-maskable-512.png",
-    mark: "/brand/crest.png",
+    favicon: "/brand/monogram-favicon.png",
+    appleTouchIcon: "/brand/monogram-apple-touch.png",
+    icon192: "/brand/monogram-icon-192.png",
+    icon512: "/brand/monogram-icon-512.png",
+    maskable: "/brand/monogram-maskable-512.png",
+    mark: "/brand/monogram.svg",
   },
   pwa: {
     manifest: "/manifest.webmanifest",
     serviceWorker: "/sw.js",
-    splashColor: "#0D0A09",
-    themeColor: "#0D0A09",
+    splashColor: "#0C0A0D",
+    themeColor: "#0C0A0D",
   },
   radius: {
     base: "0.45rem",
@@ -70,7 +69,7 @@ export const brand = {
   },
   shadows: {
     soft: "0 18px 45px rgba(0, 0, 0, 0.24)",
-    gold: "0 0 0 1px rgba(194, 161, 123, 0.22)",
+    gold: "0 0 0 1px rgba(231, 108, 120, 0.22)",
     glow: "0 18px 45px rgba(0, 0, 0, 0.26)",
   },
 } as const;

@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- The preview uses a local blob URL. */
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CameraIcon } from "lucide-react";
@@ -20,6 +20,8 @@ export function SellerProfileEditor({ initial }: { initial: { displayName: strin
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(initial.avatarUrl);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => () => { if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview); }, [preview]);
 
   function pick(file: File | null) {
     if (!file) return;
@@ -50,14 +52,14 @@ export function SellerProfileEditor({ initial }: { initial: { displayName: strin
 
   return <div className="mt-8 space-y-6 rounded-2xl border border-border bg-surface/40 p-5 md:p-8">
     <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="grid size-32 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-gold/50 bg-elevated text-3xl text-gold">
+      <div className="grid h-60 w-48 shrink-0 place-items-center overflow-hidden rounded-xl border border-gold/30 bg-elevated text-3xl text-gold">
         {preview ? <img src={preview} alt="Seller profile preview" className="size-full object-cover" /> : displayName.slice(0, 2).toUpperCase()}
       </div>
-      <div className="space-y-2"><label htmlFor="seller-photo" className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gold/40 px-4 py-2 text-sm text-gold hover:bg-gold/10"><CameraIcon className="size-4" /> Change photo</label><input id="seller-photo" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => pick(e.target.files?.[0] ?? null)} /><p className="text-xs text-muted-foreground">Square JPG, PNG, or WebP; maximum 5 MB.</p></div>
+      <div className="space-y-2"><label htmlFor="seller-photo" className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gold/40 px-4 py-2 text-sm text-gold hover:bg-gold/10"><CameraIcon className="size-4" /> Change photo</label><input id="seller-photo" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => pick(e.target.files?.[0] ?? null)} /><p className="text-xs text-muted-foreground">Use a clear portrait. JPG, PNG, or WebP; up to 5 MB.</p></div>
     </div>
     <label className="block space-y-2 text-sm"><span>Display name</span><Input value={displayName} maxLength={80} onChange={(e) => setDisplayName(e.target.value)} /></label>
     <label className="block space-y-2 text-sm"><span>Tagline</span><Input value={tagline} maxLength={120} onChange={(e) => setTagline(e.target.value)} placeholder="A short introduction" /></label>
     <label className="block space-y-2 text-sm"><span>About you</span><Textarea value={bio} maxLength={2000} rows={5} onChange={(e) => setBio(e.target.value)} /></label>
-    <Button disabled={pending} onClick={() => startTransition(() => { void save(); })} className="bg-burgundy text-white">{pending ? "Saving…" : "Save profile"}</Button>
+    <Button disabled={pending} onClick={() => startTransition(async () => { try { await save(); } catch { toast.error("Could not save your profile. Please try again."); } })} className="bg-burgundy text-white">{pending ? "Saving…" : "Save profile"}</Button>
   </div>;
 }
