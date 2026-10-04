@@ -7,6 +7,15 @@ Stack: Next.js (App Router) + TypeScript, Tailwind, shadcn/ui, Supabase
 (Postgres, Auth, Realtime, Storage), LiveKit (video), NOWPayments (crypto),
 GSAP (animation).
 
+## Phase: seller-focused visual reset (2026-10-04)
+
+- Removed the homepage category block. Rebuilt the hero using the supplied portrait, large typography, GSAP entrances, and a near-black, ivory, rose-red palette shared across the app. Replaced the overlapping crest with a simple monogram and matching browser/PWA icons.
+- Seller cards now link to public seller profiles with portraits, bios, and services. Browse supports seller-name search. Listing galleries reuse the seller portrait when service photos are missing. Banned/removed seller accounts are excluded from public cards and details.
+- Added readable member-management cards and owner token-credit dialogs with amount/reason fields, server permission checks, pending states, and visible RPC errors. Ban/remove confirmations preserve existing database permissions and audit behavior. This is not a new security audit or a change to the database ban enforcement model.
+- Fixed missing surface color utilities, tablet bottom-navigation clearance, and seller-photo save pending/error handling and preview URL cleanup. Public profile pages include loading skeletons.
+- Higgsfield generation was blocked by the provider reporting Free despite 40 credits. No video was generated. The user requested continuing without Higgsfield; the redesign uses supplied images.
+- Production build and full backend suite pass. Desktop/mobile home screenshots show no horizontal overflow. All 33 browser regressions pass, including new public profile/search and owner-credit/error-feedback checks. Generated test reports are excluded from lint.
+
 ## Phase: editorial frontend redesign (2026-10-03)
 
 - Rebuilt the homepage, browse cards, listing detail, wallet, top-up, orders, account, notifications, seller dashboard/catalog/profile/orders, authentication shell, and shared navigation/footer around an editorial charcoal, ivory, gold, and oxblood visual system. Existing booking and payment actions remain server-owned.
